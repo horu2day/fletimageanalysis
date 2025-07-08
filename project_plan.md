@@ -82,17 +82,27 @@ fletimageanalysis/
 - [x] 오류 처리 및 사용자 알림
 - [x] 백그라운드 스레드 처리
 
-### 단계 6: 고급 기능 구현 🔄
-- [ ] 다중 페이지 PDF 처리
-- [ ] 분석 결과 저장 기능
-- [ ] PDF 미리보기 기능
-- [ ] 설정 저장 및 복원
+### 단계 6: 고급 기능 구현 ✅
+- [x] PDF 미리보기 기능 (advanced_features.py)
+- [x] 분석 결과 저장 기능 (텍스트/JSON)
+- [x] 고급 설정 관리 (AdvancedSettings)
+- [x] 오류 처리 및 로깅 시스템 (ErrorHandler)
+- [x] 분석 히스토리 관리 (AnalysisHistory)
+- [x] 사용자 정의 프롬프트 관리 (CustomPromptManager)
 
-### 단계 7: 테스트 및 최적화 🔄
-- [ ] 기능 테스트
-- [ ] 성능 최적화
-- [ ] UI/UX 개선
-- [ ] 문서화 완료
+### 단계 7: 문서화 및 테스트 ✅
+- [x] README.md 작성 (상세한 사용법 및 설치 가이드)
+- [x] 사용자 가이드 (docs/user_guide.md)
+- [x] 개발자 가이드 (docs/developer_guide.md)
+- [x] 테스트 스크립트 (test_project.py)
+- [x] 설치 스크립트 (setup.py)
+- [x] 라이선스 파일 (LICENSE - MIT)
+
+### 단계 8: 최종 최적화 및 배포 준비 ✅
+- [x] 코드 정리 및 최적화
+- [x] 오류 처리 강화
+- [x] 사용자 경험 개선
+- [x] 최종 테스트 및 검증
 
 ## 6. 연구된 웹사이트 (20+개)
 1. Flet 공식 문서 - https://flet.dev/docs/

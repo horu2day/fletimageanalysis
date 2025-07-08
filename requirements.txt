@@ -1,0 +1,28 @@
+# Flet 기반 PDF 이미지 분석기 - 필수 라이브러리
+
+# UI 프레임워크
+flet>=0.25.1
+
+# Google Generative AI SDK
+google-genai>=1.0.0
+
+# PDF 처리 라이브러리 (둘 중 하나 선택)
+PyMuPDF>=1.26.3
+pdf2image>=1.17.0
+
+# 이미지 처리
+Pillow>=10.0.0
+
+# 환경 변수 관리
+python-dotenv>=1.0.0
+
+# 추가 유틸리티
+requests>=2.31.0
+
+# Flet Material Design (선택 사항)
+flet-material>=0.3.3
+
+# 개발 도구 (선택 사항)
+# black>=23.0.0
+# flake8>=6.0.0
+# pytest>=7.0.0

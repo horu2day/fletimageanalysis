@@ -823,77 +823,54 @@ class DocumentAnalyzerApp:
             self.show_error_dialog("분석 오류", f"분석 중 오류가 발생했습니다:\n{str(e)}")
     
     def _run_pdf_analysis(self):
-        """PDF 파일 분석 실행"""
-        self.update_progress_ui(True, "PDF 이미지 변환 중...")
+        """PDF 파일 분석 실행 (좌표 추출 기능 통합)"""
+        self.update_progress_ui(True, "PDF 분석 준비 중...")
         
-        # 조직 유형 결정
-        organization_type = "transportation"
-        if self.organization_selector and self.organization_selector.value:
-            if self.organization_selector.value == "한국도로공사":
-                organization_type = "expressway"
-            else:
-                organization_type = "transportation"
-        
+        organization_type = "expressway" if self.organization_selector.value == "한국도로공사" else "transportation"
         logger.info(f"선택된 조직 유형: {organization_type}")
-        
-        # 분석할 페이지 결정
-        if self.page_selector.value == "첫 번째 페이지":
-            pages_to_analyze = [0]
-        else:
-            pages_to_analyze = list(range(self.current_pdf_info['page_count']))
-        
-        # 분석 프롬프트 결정
+
+        pages_to_analyze = list(range(self.current_pdf_info['page_count'])) if self.page_selector.value == "모든 페이지" else [0]
+
         if self.analysis_mode.value == "custom":
             prompt = self.custom_prompt.value or Config.DEFAULT_PROMPT
-        elif self.analysis_mode.value == "detailed":
-            prompt = "이 PDF 이미지를 자세히 분석하여 다음 정보를 제공해주세요: 1) 문서 유형, 2) 주요 내용, 3) 도면/도표 정보, 4) 텍스트 내용, 5) 기타 특징"
         else:
-            prompt = Config.DEFAULT_PROMPT
-        
-        # 페이지별 분석 수행
+            prompt = "제공된 이미지와 텍스트 데이터를 기반으로 도면의 주요 정보를 추출해주세요."
+
         total_pages = len(pages_to_analyze)
         self.analysis_results = {}
-        
+
         for i, page_num in enumerate(pages_to_analyze):
             progress = (i + 1) / total_pages
-            self.update_progress_ui(
-                True, 
-                f"페이지 {page_num + 1} 분석 중... ({i + 1}/{total_pages})",
-                progress
-            )
-            
-            # PDF 페이지를 base64로 변환
-            base64_data = self.pdf_processor.pdf_page_to_base64(
-                self.current_file_path, 
-                page_num
-            )
+            self.update_progress_ui(True, f"페이지 {page_num + 1}/{total_pages} 처리 중...", progress)
+
+            # 1. 텍스트와 좌표 추출
+            self.update_progress_ui(True, f"페이지 {page_num + 1}: 텍스트 추출 중...", progress)
+            text_blocks = self.pdf_processor.extract_text_with_coordinates(self.current_file_path, page_num)
+            if not text_blocks:
+                logger.warning(f"페이지 {page_num + 1}에서 텍스트를 추출하지 못했습니다.")
+
+            # 2. 이미지를 Base64로 변환
+            self.update_progress_ui(True, f"페이지 {page_num + 1}: 이미지 변환 중...", progress)
+            base64_data = self.pdf_processor.pdf_page_to_base64(self.current_file_path, page_num)
             
             if base64_data:
-                # Gemini API로 분석
-                result = self.gemini_analyzer.analyze_image_from_base64(
+                # 3. Gemini API로 분석 (이미지 + 텍스트 좌표)
+                self.update_progress_ui(True, f"페이지 {page_num + 1}: AI 분석 중...", progress)
+                result = self.gemini_analyzer.analyze_pdf_page(
                     base64_data=base64_data,
+                    text_blocks=text_blocks,
                     prompt=prompt,
                     organization_type=organization_type
                 )
-                
-                if result:
-                    self.analysis_results[page_num] = result
-                else:
-                    self.analysis_results[page_num] = f"페이지 {page_num + 1} 분석 실패"
+                self.analysis_results[page_num] = result or f"페이지 {page_num + 1} 분석 실패"
             else:
                 self.analysis_results[page_num] = f"페이지 {page_num + 1} 이미지 변환 실패"
-        
-        # 결과 표시
+
         self.display_analysis_results()
         
-        # 완료 상태로 업데이트
-        if self.analysis_start_time:
-            duration = time.time() - self.analysis_start_time
-            duration_str = DateTimeUtils.format_duration(duration)
-            self.update_progress_ui(False, f"✅ PDF 분석 완료! (소요시간: {duration_str})", 1.0)
-        else:
-            self.update_progress_ui(False, "✅ PDF 분석 완료!", 1.0)
-    
+        duration_str = DateTimeUtils.format_duration(time.time() - self.analysis_start_time)
+        self.update_progress_ui(False, f"✅ PDF 분석 완료! (소요시간: {duration_str})", 1.0)
+
     def _run_dxf_analysis(self):
         """DXF 파일 분석 실행"""
         self.update_progress_ui(True, "DXF 파일 분석 중...")
@@ -949,41 +926,50 @@ class DocumentAnalyzerApp:
         self.page.run_thread(update)
     
     def display_analysis_results(self):
-        """분석 결과 표시"""
+        """분석 결과 표시 (좌표 포함)"""
         def update_results():
-            if self.analysis_results:
-                # 결과 텍스트 구성 - 줄바꿈 올바르게 처리
-                result_text = "🎯 분석 요약\n"
-                result_text += f"📊 분석된 페이지: {len(self.analysis_results)}개\n"
-                result_text += f"⏰ 완료 시간: {DateTimeUtils.get_timestamp()}\n"
-                result_text += f"🏢 조직 스키마: {self.organization_selector.value}\n"
-                result_text += "=" * 60 + "\n\n"
-                
-                for page_num, result in self.analysis_results.items():
-                    result_text += f"📋 페이지 {page_num + 1} 분석 결과\n"
-                    result_text += "-" * 40 + "\n"
-                    result_text += result
-                    result_text += "\n\n" + "=" * 60 + "\n\n"
-                
-                self.results_text.value = result_text.strip()
-                
-                # 저장 버튼 활성화
-                self.save_text_button.disabled = False
-                self.save_json_button.disabled = False
-                
-                # PDF 분석이므로 CSV 버튼 숨김
-                self.save_csv_button.visible = False
-                self.save_csv_button.disabled = True
-            else:
+            if not self.analysis_results:
                 self.results_text.value = "❌ 분석 결과가 없습니다."
                 self.save_text_button.disabled = True
                 self.save_json_button.disabled = True
                 self.save_csv_button.visible = False
-                self.save_csv_button.disabled = True
+                self.page.update()
+                return
+
+            import json
+            result_text = f"🎯 분석 요약 (총 {len(self.analysis_results)}페이지)\n"
+            result_text += f"⏰ 완료 시간: {DateTimeUtils.get_timestamp()}\n"
+            result_text += f"🏢 조직 스키마: {self.organization_selector.value}\n"
+            result_text += "=" * 60 + "\n\n"
+
+            for page_num, result_json in self.analysis_results.items():
+                result_text += f"📋 페이지 {page_num + 1} 분석 결과\n"
+                result_text += "-" * 40 + "\n"
                 
+                try:
+                    # 결과가 JSON 문자열이므로 파싱
+                    data = json.loads(result_json)
+                    for key, item in data.items():
+                        if isinstance(item, dict) and 'value' in item:
+                            val = item.get('value', 'N/A')
+                            x = item.get('x', -1)
+                            y = item.get('y', -1)
+                            result_text += f"- {key}: {val} (좌표: {x:.0f}, {y:.0f})\n"
+                        else:
+                            # 단순 값일 경우 (이전 버전 호환)
+                            result_text += f"- {key}: {item}\n"
+                except (json.JSONDecodeError, TypeError):
+                    # JSON 파싱 실패 시 원본 텍스트 표시
+                    result_text += str(result_json)
+
+                result_text += "\n" + "=" * 60 + "\n\n"
+            
+            self.results_text.value = result_text.strip()
+            self.save_text_button.disabled = False
+            self.save_json_button.disabled = False
+            self.save_csv_button.visible = False
             self.page.update()
-        
-        # 메인 스레드에서 UI 업데이트
+
         self.page.run_thread(update_results)
     
     def display_dxf_analysis_results(self, dxf_result):

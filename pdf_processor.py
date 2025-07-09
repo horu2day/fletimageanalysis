@@ -7,7 +7,7 @@ import base64
 import io
 import fitz  # PyMuPDF
 from PIL import Image
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Dict, Any
 import logging
 from pathlib import Path
 
@@ -211,6 +211,38 @@ class PDFProcessor:
         
         logger.info(f"최적 줌 비율 계산: {zoom:.2f}")
         return zoom
+
+    def extract_text_with_coordinates(self, file_path: str, page_number: int = 0) -> List[Dict[str, Any]]:
+        """PDF 페이지에서 텍스트와 좌표를 추출합니다."""
+        text_blocks = []
+        try:
+            doc = fitz.open(file_path)
+            if page_number >= len(doc):
+                logger.error(f"페이지 번호가 범위를 벗어남: {page_number}")
+                doc.close()
+                return []
+
+            page = doc.load_page(page_number)
+            # 'dict' 옵션은 블록, 라인, 스팬에 대한 상세 정보를 제공합니다.
+            blocks = page.get_text("dict")["blocks"]
+            for b in blocks:  # 블록 반복
+                if b['type'] == 0:  # 텍스트 블록
+                    for l in b["lines"]:  # 라인 반복
+                        for s in l["spans"]:  # 스팬(텍스트 조각) 반복
+                            text_blocks.append({
+                                "text": s["text"],
+                                "bbox": s["bbox"], # (x0, y0, x1, y1)
+                                "font": s["font"],
+                                "size": s["size"]
+                            })
+            
+            doc.close()
+            logger.info(f"페이지 {page_number + 1}에서 {len(text_blocks)}개의 텍스트 블록 추출 완료")
+            return text_blocks
+
+        except Exception as e:
+            logger.error(f"PDF 텍스트 및 좌표 추출 중 오류 발생: {e}")
+            return []
 
 # 사용 예시
 if __name__ == "__main__":

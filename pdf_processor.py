@@ -172,6 +172,30 @@ class PDFProcessor:
             return self.image_to_base64(img, format)
         return None
     
+    def pdf_page_to_image_bytes(
+        self, 
+        file_path: str, 
+        page_number: int = 0,
+        zoom: float = 2.0,
+        format: str = "PNG"
+    ) -> Optional[bytes]:
+        """PDF 페이지를 이미지 바이트로 변환 (Flet 이미지 표시용)"""
+        try:
+            img = self.convert_pdf_page_to_image(file_path, page_number, zoom)
+            if img:
+                buffer = io.BytesIO()
+                img.save(buffer, format=format)
+                buffer.seek(0)
+                image_bytes = buffer.getvalue()
+                
+                logger.info(f"페이지 {page_number + 1} 이미지 바이트 변환 완료 (크기: {len(image_bytes)} 바이트)")
+                return image_bytes
+            return None
+            
+        except Exception as e:
+            logger.error(f"PDF 페이지 이미지 바이트 변환 중 오류 발생: {e}")
+            return None
+    
     def get_optimal_zoom_for_size(self, target_size: Tuple[int, int]) -> float:
         """목표 크기에 맞는 최적 줌 비율 계산"""
         # 기본 PDF 페이지 크기 (A4: 595x842 points)

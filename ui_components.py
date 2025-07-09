@@ -4,7 +4,7 @@ Flet 기반 사용자 인터페이스 컴포넌트들을 정의합니다.
 """
 
 import flet as ft
-from typing import Callable, Optional, List, Dict, Any
+from typing import Callable
 import logging
 from config import Config
 
@@ -25,15 +25,16 @@ class UIComponents:
                 weight=ft.FontWeight.BOLD
             ),
             center_title=True,
-            bgcolor=ft.colors.BLUE_600,
-            color=ft.colors.WHITE,
+            bgcolor=ft.Colors.BLUE_600,
+            color=ft.Colors.WHITE,
             automatically_imply_leading=False,
         )
     
     @staticmethod
     def create_file_upload_section(
         on_file_selected: Callable,
-        on_upload_click: Callable
+        on_upload_click: Callable,
+        organization_selector_ref: Callable = None
     ) -> ft.Container:
         """파일 업로드 섹션 생성"""
         
@@ -46,42 +47,43 @@ class UIComponents:
         selected_file_text = ft.Text(
             "선택된 파일이 없습니다",
             size=14,
-            color=ft.colors.GREY_600
+            color=ft.Colors.GREY_600
         )
         
         # 파일 선택 버튼
         select_button = ft.ElevatedButton(
-            text="PDF 파일 선택",
-            icon=ft.icons.UPLOAD_FILE,
+            text="PDF/DXF 파일 선택",
+            icon=ft.Icons.UPLOAD_FILE,
             on_click=lambda _: file_picker.pick_files(
                 allowed_extensions=Config.ALLOWED_EXTENSIONS,
                 allow_multiple=False
             ),
             style=ft.ButtonStyle(
-                bgcolor=ft.colors.BLUE_100,
-                color=ft.colors.BLUE_800,
+                bgcolor=ft.Colors.BLUE_100,
+                color=ft.Colors.BLUE_800,
             )
         )
         
         # 업로드 버튼
         upload_button = ft.ElevatedButton(
             text="분석 시작",
-            icon=ft.icons.ANALYTICS,
+            icon=ft.Icons.ANALYTICS,
             on_click=on_upload_click,
             disabled=True,
             style=ft.ButtonStyle(
-                bgcolor=ft.colors.GREEN_100,
-                color=ft.colors.GREEN_800,
+                bgcolor=ft.Colors.GREEN_100,
+                color=ft.Colors.GREEN_800,
             )
         )
         
-        return ft.Container(
+        # 반환되는 컨테이너에 organization_selector를 포함
+        container = ft.Container(
             content=ft.Column([
                 ft.Text(
-                    "📄 PDF 파일 업로드",
+                    "📄 PDF/DXF 파일 업로드",
                     size=18,
                     weight=ft.FontWeight.BOLD,
-                    color=ft.colors.BLUE_800
+                    color=ft.Colors.BLUE_800
                 ),
                 ft.Divider(),
                 ft.Row([
@@ -93,14 +95,28 @@ class UIComponents:
             ]),
             padding=20,
             margin=10,
-            bgcolor=ft.colors.WHITE,
+            bgcolor=ft.Colors.WHITE,
             border_radius=10,
-            border=ft.border.all(1, ft.colors.GREY_300),
+            border=ft.border.all(1, ft.Colors.GREY_300),
         )
+        
+        return container
     
-    @staticmethod
-    def create_analysis_settings_section() -> ft.Container:
-        """분석 설정 섹션 생성"""
+    @staticmethod  
+    def create_analysis_settings_section_with_refs() -> tuple:
+        """분석 설정 섹션 생성 및 참조 반환"""
+        
+        # 조직 선택 드롭다운
+        organization_selector = ft.Dropdown(
+            label="조직 유형",
+            value="국토교통부",
+            options=[
+                ft.dropdown.Option("국토교통부"),
+                ft.dropdown.Option("한국도로공사"),
+            ],
+            width=180,
+            tooltip="분석할 도면의 조직 유형을 선택하세요",
+        )
         
         # 페이지 선택 드롭다운
         page_selector = ft.Dropdown(
@@ -134,16 +150,30 @@ class UIComponents:
             visible=False,
         )
         
-        return ft.Container(
+        # 조직별 설명 텍스트
+        org_description = ft.Text(
+            "💡 국토교통부: 일반 토목/건설 도면 스키마 적용\n" +
+            "🛣️ 한국도로공사: 고속도로 전용 도면 스키마 적용",
+            size=12,
+            color=ft.Colors.BLUE_700,
+            italic=True,
+        )
+        
+        container = ft.Container(
             content=ft.Column([
                 ft.Text(
                     "⚙️ 분석 설정",
                     size=18,
                     weight=ft.FontWeight.BOLD,
-                    color=ft.colors.ORANGE_800
+                    color=ft.Colors.ORANGE_800
                 ),
                 ft.Divider(),
+                org_description,
                 ft.Row([
+                    ft.Column([
+                        ft.Text("조직 유형:", weight=ft.FontWeight.BOLD),
+                        organization_selector,
+                    ], expand=1),
                     ft.Column([
                         ft.Text("페이지 선택:", weight=ft.FontWeight.BOLD),
                         page_selector,
@@ -157,10 +187,19 @@ class UIComponents:
             ]),
             padding=20,
             margin=10,
-            bgcolor=ft.colors.WHITE,
+            bgcolor=ft.Colors.WHITE,
             border_radius=10,
-            border=ft.border.all(1, ft.colors.GREY_300),
+            border=ft.border.all(1, ft.Colors.GREY_300),
         )
+        
+        # 컴포넌트 참조들과 함께 반환
+        return container, organization_selector, page_selector, analysis_mode, custom_prompt
+    
+    @staticmethod
+    def create_analysis_settings_section() -> ft.Container:
+        """기본 분석 설정 섹션 생성 (이전 버전 호환성)"""
+        container, _, _, _, _ = UIComponents.create_analysis_settings_section_with_refs()
+        return container
     
     @staticmethod
     def create_progress_section() -> ft.Container:
@@ -169,8 +208,8 @@ class UIComponents:
         # 진행률 바
         progress_bar = ft.ProgressBar(
             width=400,
-            color=ft.colors.BLUE_600,
-            bgcolor=ft.colors.GREY_300,
+            color=ft.Colors.BLUE_600,
+            bgcolor=ft.Colors.GREY_300,
             visible=False,
         )
         
@@ -178,7 +217,7 @@ class UIComponents:
         status_text = ft.Text(
             "대기 중...",
             size=14,
-            color=ft.colors.GREY_600
+            color=ft.Colors.GREY_600
         )
         
         # 스피너
@@ -195,7 +234,7 @@ class UIComponents:
                     "📊 분석 진행 상황",
                     size=18,
                     weight=ft.FontWeight.BOLD,
-                    color=ft.colors.PURPLE_800
+                    color=ft.Colors.PURPLE_800
                 ),
                 ft.Divider(),
                 ft.Row([
@@ -208,9 +247,9 @@ class UIComponents:
             ]),
             padding=20,
             margin=10,
-            bgcolor=ft.colors.WHITE,
+            bgcolor=ft.Colors.WHITE,
             border_radius=10,
-            border=ft.border.all(1, ft.colors.GREY_300),
+            border=ft.border.all(1, ft.Colors.GREY_300),
         )
     
     @staticmethod
@@ -231,19 +270,19 @@ class UIComponents:
             ], scroll=ft.ScrollMode.AUTO),
             padding=15,
             height=300,
-            bgcolor=ft.colors.GREY_50,
+            bgcolor=ft.Colors.GREY_50,
             border_radius=8,
-            border=ft.border.all(1, ft.colors.GREY_300),
+            border=ft.border.all(1, ft.Colors.GREY_300),
         )
         
         # 저장 버튼
         save_button = ft.ElevatedButton(
             text="결과 저장",
-            icon=ft.icons.SAVE,
+            icon=ft.Icons.SAVE,
             disabled=True,
             style=ft.ButtonStyle(
-                bgcolor=ft.colors.TEAL_100,
-                color=ft.colors.TEAL_800,
+                bgcolor=ft.Colors.TEAL_100,
+                color=ft.Colors.TEAL_800,
             )
         )
         
@@ -254,7 +293,7 @@ class UIComponents:
                         "📋 분석 결과",
                         size=18,
                         weight=ft.FontWeight.BOLD,
-                        color=ft.colors.GREEN_800
+                        color=ft.Colors.GREEN_800
                     ),
                     save_button,
                 ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
@@ -263,9 +302,9 @@ class UIComponents:
             ]),
             padding=20,
             margin=10,
-            bgcolor=ft.colors.WHITE,
+            bgcolor=ft.Colors.WHITE,
             border_radius=10,
-            border=ft.border.all(1, ft.colors.GREY_300),
+            border=ft.border.all(1, ft.Colors.GREY_300),
         )
     
     @staticmethod
@@ -276,33 +315,33 @@ class UIComponents:
         image_container = ft.Container(
             content=ft.Column([
                 ft.Icon(
-                    ft.icons.PICTURE_AS_PDF,
+                    ft.Icons.PICTURE_AS_PDF,
                     size=100,
-                    color=ft.colors.GREY_400
+                    color=ft.Colors.GREY_400
                 ),
                 ft.Text(
                     "PDF 미리보기",
                     size=14,
-                    color=ft.colors.GREY_600
+                    color=ft.Colors.GREY_600
                 )
             ], alignment=ft.MainAxisAlignment.CENTER),
             width=300,
             height=400,
-            bgcolor=ft.colors.GREY_100,
+            bgcolor=ft.Colors.GREY_100,
             border_radius=8,
-            border=ft.border.all(1, ft.colors.GREY_300),
+            border=ft.border.all(1, ft.Colors.GREY_300),
             alignment=ft.alignment.center,
         )
         
         # 페이지 네비게이션
         page_nav = ft.Row([
             ft.IconButton(
-                icon=ft.icons.ARROW_BACK,
+                icon=ft.Icons.ARROW_BACK,
                 disabled=True,
             ),
             ft.Text("1 / 1", size=14),
             ft.IconButton(
-                icon=ft.icons.ARROW_FORWARD,
+                icon=ft.Icons.ARROW_FORWARD,
                 disabled=True,
             ),
         ], alignment=ft.MainAxisAlignment.CENTER)
@@ -313,7 +352,7 @@ class UIComponents:
                     "👁️ PDF 미리보기",
                     size=18,
                     weight=ft.FontWeight.BOLD,
-                    color=ft.colors.INDIGO_800
+                    color=ft.Colors.INDIGO_800
                 ),
                 ft.Divider(),
                 image_container,
@@ -321,9 +360,9 @@ class UIComponents:
             ], alignment=ft.MainAxisAlignment.START),
             padding=20,
             margin=10,
-            bgcolor=ft.colors.WHITE,
+            bgcolor=ft.Colors.WHITE,
             border_radius=10,
-            border=ft.border.all(1, ft.colors.GREY_300),
+            border=ft.border.all(1, ft.Colors.GREY_300),
         )
     
     @staticmethod
@@ -362,9 +401,9 @@ class UIComponents:
             ], alignment=ft.MainAxisAlignment.CENTER),
             width=200,
             height=100,
-            bgcolor=ft.colors.WHITE,
+            bgcolor=ft.Colors.WHITE,
             border_radius=10,
-            border=ft.border.all(2, ft.colors.BLUE_600),
+            border=ft.border.all(2, ft.Colors.BLUE_600),
             alignment=ft.alignment.center,
         )
 

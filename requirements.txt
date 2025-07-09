@@ -13,6 +13,12 @@ pdf2image>=1.17.0
 # 이미지 처리
 Pillow>=10.0.0
 
+# DXF 파일 처리 (NEW)
+ezdxf>=1.4.2
+
+# 수치 계산 (NEW)
+numpy>=1.24.0
+
 # 환경 변수 관리
 python-dotenv>=1.0.0
 

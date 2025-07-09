@@ -1,5 +1,5 @@
 """
-Gemini API 연동 모듈 (수정된 버전)
+Gemini API 연동 모듈
 Google Gemini API를 사용하여 이미지 분석을 수행합니다.
 """
 
@@ -13,148 +13,6 @@ from config import Config
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-# 스키마 정의 (클래스 외부에서 정의하여 재사용)
-SCHEMA_EXPRESSWAY = genai.types.Schema(
-    type=genai.types.Type.OBJECT,
-    required=["사업명", "건설분야", "건설단계"],  # "시설/공구"를 required에서 제거
-    properties={
-        "사업명": genai.types.Schema(
-            type=genai.types.Type.STRING,
-        ),
-        "시설/공구": genai.types.Schema(  # properties에 추가
-            type=genai.types.Type.STRING,
-        ),
-        "노선이정": genai.types.Schema(
-            type=genai.types.Type.STRING,
-        ),
-        "설계사": genai.types.Schema(
-            type=genai.types.Type.STRING,
-        ),
-        "시공사": genai.types.Schema(
-            type=genai.types.Type.STRING,
-        ),
-        "건설분야": genai.types.Schema(
-            type=genai.types.Type.STRING,
-        ),
-        "건설단계": genai.types.Schema(
-            type=genai.types.Type.STRING,
-        ),
-        "계정번호": genai.types.Schema(
-            type=genai.types.Type.STRING,
-        ),
-        "계정날짜": genai.types.Schema(
-            type=genai.types.Type.STRING,
-        ),
-        "개정내용": genai.types.Schema(
-            type=genai.types.Type.STRING,
-        ),
-        "작성자": genai.types.Schema(
-            type=genai.types.Type.STRING,
-        ),
-        "검토자": genai.types.Schema(
-            type=genai.types.Type.STRING,
-        ),
-        "확인자": genai.types.Schema(
-            type=genai.types.Type.STRING,
-        ),
-        "설계공구/Station": genai.types.Schema(
-            type=genai.types.Type.STRING,
-        ),
-        "시공공구/Station": genai.types.Schema(
-            type=genai.types.Type.STRING,
-        ),
-        "도면번호": genai.types.Schema(
-            type=genai.types.Type.STRING,
-        ),
-        "도면축척": genai.types.Schema(
-            type=genai.types.Type.STRING,
-        ),
-        "도면명": genai.types.Schema(
-            type=genai.types.Type.STRING,
-        ),
-        "편철번호": genai.types.Schema(
-            type=genai.types.Type.STRING,
-        ),
-        "적용표준버전": genai.types.Schema(
-            type=genai.types.Type.STRING,
-        ),
-        "Note": genai.types.Schema(
-            type=genai.types.Type.STRING,
-        ),
-        "Title": genai.types.Schema(
-            type=genai.types.Type.STRING,
-        ),
-        "기타정보": genai.types.Schema(
-            type=genai.types.Type.STRING,
-        ),
-    },
-)
-
-SCHEMA_TRANSPORTATION = genai.types.Schema(
-    type=genai.types.Type.OBJECT,
-    required=["사업명", "시설/공구", "건설분야", "건설단계"],
-    properties={
-        "사업명": genai.types.Schema(
-            type=genai.types.Type.STRING,
-        ),
-        "시설/공구": genai.types.Schema(
-            type=genai.types.Type.STRING,
-        ),
-        "건설분야": genai.types.Schema(
-            type=genai.types.Type.STRING,
-        ),
-        "건설단계": genai.types.Schema(
-            type=genai.types.Type.STRING,
-        ),
-        "계정차수": genai.types.Schema(
-            type=genai.types.Type.STRING,
-        ),
-        "계정일자": genai.types.Schema(
-            type=genai.types.Type.STRING,
-        ),
-        "개정내용": genai.types.Schema(
-            type=genai.types.Type.STRING,
-        ),
-        "과업책임자": genai.types.Schema(
-            type=genai.types.Type.STRING,
-        ),
-        "분야별책임자": genai.types.Schema(
-            type=genai.types.Type.STRING,
-        ),
-        "설계자": genai.types.Schema(
-            type=genai.types.Type.STRING,
-        ),
-        "위치정보": genai.types.Schema(
-            type=genai.types.Type.STRING,
-        ),
-        "축척": genai.types.Schema(
-            type=genai.types.Type.STRING,
-        ),
-        "도면번호": genai.types.Schema(
-            type=genai.types.Type.STRING,
-        ),
-        "도면명": genai.types.Schema(
-            type=genai.types.Type.STRING,
-        ),
-        "편철번호": genai.types.Schema(
-            type=genai.types.Type.STRING,
-        ),
-        "적용표준": genai.types.Schema(
-            type=genai.types.Type.STRING,
-        ),
-        "Note": genai.types.Schema(
-            type=genai.types.Type.STRING,
-        ),
-        "Title": genai.types.Schema(
-            type=genai.types.Type.STRING,
-        ),
-        "기타정보": genai.types.Schema(
-            type=genai.types.Type.STRING,
-        ),
-    },
-)
-
 
 class GeminiAnalyzer:
     """Gemini API 이미지 분석 클래스"""
@@ -181,13 +39,6 @@ class GeminiAnalyzer:
         except Exception as e:
             logger.error(f"Gemini 클라이언트 초기화 실패: {e}")
             raise
-    
-    def _get_schema(self, organization_type: str) -> genai.types.Schema:
-        """조직 유형에 따른 스키마를 반환합니다."""
-        if organization_type == "expressway":
-            return SCHEMA_EXPRESSWAY
-        else:  # transportation (기본값)
-            return SCHEMA_TRANSPORTATION
     
     def analyze_image_from_base64(
         self, 
@@ -224,19 +75,156 @@ class GeminiAnalyzer:
                     ],
                 )
             ]
-            
+            schema_expressway=genai.types.Schema(
+                    type = genai.types.Type.OBJECT,
+                    required = ["사업명", "시설/공구", "건설분야", "건설단계"],
+                    properties = {
+                        "사업명": genai.types.Schema(
+                            type = genai.types.Type.STRING,
+                        ),
+                        "노선이정": genai.types.Schema(
+                            type = genai.types.Type.STRING,
+                        ),
+                        "설계사": genai.types.Schema(
+                            type = genai.types.Type.STRING,
+                        ),
+                        "시공사": genai.types.Schema(
+                            type = genai.types.Type.STRING,
+                        ),
+                        "건설분야": genai.types.Schema(
+                            type = genai.types.Type.STRING,
+                        ),
+                        "건설단계": genai.types.Schema(
+                            type = genai.types.Type.STRING,
+                        ),
+                        "계정번호": genai.types.Schema(
+                            type = genai.types.Type.STRING,
+                        ),
+                        "(계정)날짜": genai.types.Schema(
+                            type = genai.types.Type.STRING,
+                        ),
+                        "(개정)내용": genai.types.Schema(
+                            type = genai.types.Type.STRING,
+                        ),
+                        "작성자": genai.types.Schema(
+                            type = genai.types.Type.STRING,
+                        ),
+                        "검토자": genai.types.Schema(
+                            type = genai.types.Type.STRING,
+                        ),
+                        "확인자": genai.types.Schema(
+                            type = genai.types.Type.STRING,
+                        ),
+                        "설계공구": genai.types.Schema(
+                            type = genai.types.Type.STRING,
+                        ),
+                        "시공공구": genai.types.Schema(
+                            type = genai.types.Type.STRING,
+                        ),
+                        "도면번호": genai.types.Schema(
+                            type = genai.types.Type.STRING,
+                        ),
+                        "도면축척": genai.types.Schema(
+                            type = genai.types.Type.STRING,
+                        ),
+                        "도면명": genai.types.Schema(
+                            type = genai.types.Type.STRING,
+                        ),
+                        "편철번호": genai.types.Schema(
+                            type = genai.types.Type.STRING,
+                        ),
+                        "적용표준버전": genai.types.Schema(
+                            type = genai.types.Type.STRING,
+                        ),
+                        "Note": genai.types.Schema(
+                            type = genai.types.Type.STRING,
+                        ),
+                        "Title": genai.types.Schema(
+                            type = genai.types.Type.STRING,
+                        ),
+                        "기타정보": genai.types.Schema(
+                            type = genai.types.Type.STRING,
+                        ),
+                    },
+                )
+            schema_transportation=genai.types.Schema(
+                    type = genai.types.Type.OBJECT,
+                    required = ["사업명", "시설/공구", "건설분야", "건설단계"],
+                    properties = {
+                        "사업명": genai.types.Schema(
+                            type = genai.types.Type.STRING,
+                        ),
+                        "시설/공구": genai.types.Schema(
+                            type = genai.types.Type.STRING,
+                        ),
+                        "건설분야": genai.types.Schema(
+                            type = genai.types.Type.STRING,
+                        ),
+                        "건설단계": genai.types.Schema(
+                            type = genai.types.Type.STRING,
+                        ),
+                        "계정차수": genai.types.Schema(
+                            type = genai.types.Type.STRING,
+                        ),
+                        "계정일자": genai.types.Schema(
+                            type = genai.types.Type.STRING,
+                        ),
+                        "개정내용": genai.types.Schema(
+                            type = genai.types.Type.STRING,
+                        ),
+                        "과업책임자": genai.types.Schema(
+                            type = genai.types.Type.STRING,
+                        ),
+                        "분야별책임자": genai.types.Schema(
+                            type = genai.types.Type.STRING,
+                        ),
+                        "설계자": genai.types.Schema(
+                            type = genai.types.Type.STRING,
+                        ),
+                        "위치정보": genai.types.Schema(
+                            type = genai.types.Type.STRING,
+                        ),
+                        "축척": genai.types.Schema(
+                            type = genai.types.Type.STRING,
+                        ),
+                        "도면번호": genai.types.Schema(
+                            type = genai.types.Type.STRING,
+                        ),
+                        "도면명": genai.types.Schema(
+                            type = genai.types.Type.STRING,
+                        ),
+                        "편철번호": genai.types.Schema(
+                            type = genai.types.Type.STRING,
+                        ),
+                        "적용표준": genai.types.Schema(
+                            type = genai.types.Type.STRING,
+                        ),
+                        "Note": genai.types.Schema(
+                            type = genai.types.Type.STRING,
+                        ),
+                        "Title": genai.types.Schema(
+                            type = genai.types.Type.STRING,
+                        ),
+                        "기타정보": genai.types.Schema(
+                            type = genai.types.Type.STRING,
+                        ),
+                    },
+                )
             # 조직 유형에 따른 스키마 선택
-            selected_schema = self._get_schema(organization_type)
+            if organization_type == "expressway":
+                selected_schema = schema_expressway
+            else:  # transportation (기본값)
+                selected_schema = schema_transportation
             
             # 생성 설정
             generate_content_config = types.GenerateContentConfig(
                 temperature=0,
                 top_p=0.05,
-                thinking_config=types.ThinkingConfig(
+                thinking_config = types.ThinkingConfig(
                     thinking_budget=0,
                 ),
                 response_mime_type="application/json",
-                response_schema=selected_schema
+                response_schema= selected_schema
             )
             
             logger.info("Gemini API 분석 요청 시작...")
@@ -297,13 +285,16 @@ class GeminiAnalyzer:
             ]
             
             # 조직 유형에 따른 스키마 선택
-            selected_schema = self._get_schema(organization_type)
+            if organization_type == "expressway":
+                selected_schema = schema_expressway
+            else:  # transportation (기본값)
+                selected_schema = schema_transportation
             
             # 생성 설정
             generate_content_config = types.GenerateContentConfig(
                 temperature=0,
                 top_p=0.05,
-                thinking_config=types.ThinkingConfig(
+                thinking_config = types.ThinkingConfig(
                     thinking_budget=0,
                 ),
                 response_mime_type="application/json",
@@ -398,7 +389,6 @@ class GeminiAnalyzer:
             "api_key_length": len(self.api_key) if self.api_key else 0,
             "default_prompt": self.default_prompt
         }
-
 
 # 사용 예시 및 테스트
 if __name__ == "__main__":

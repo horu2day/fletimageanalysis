@@ -14,8 +14,8 @@ class Config:
     """애플리케이션 설정 클래스"""
     
     # 기본 애플리케이션 설정
-    APP_TITLE = os.getenv("APP_TITLE", "PDF 도면 분석기")
-    APP_VERSION = os.getenv("APP_VERSION", "1.0.0")
+    APP_TITLE = os.getenv("APP_TITLE", "PDF/DXF 도면 분석기")
+    APP_VERSION = os.getenv("APP_VERSION", "1.1.0")
     DEBUG = os.getenv("DEBUG", "False").lower() == "true"
     
     # API 설정
@@ -23,18 +23,19 @@ class Config:
     GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash-preview-04-17")
     DEFAULT_PROMPT = os.getenv(
         "DEFAULT_PROMPT", 
-        "pdf 이미지 분석하여 도면인지 어떤 정보들이 있는지 알려줘."
+        "pdf 이미지 분석하여 도면인지 어떤 정보들이 있는지 알려줘.structured_output 이외에 정보도 기타에 넣어줘."
     )
     
     # 파일 업로드 설정
     MAX_FILE_SIZE_MB = int(os.getenv("MAX_FILE_SIZE_MB", "50"))
-    ALLOWED_EXTENSIONS = os.getenv("ALLOWED_EXTENSIONS", "pdf").split(",")
+    ALLOWED_EXTENSIONS = os.getenv("ALLOWED_EXTENSIONS", "pdf,dxf").split(",")
     UPLOAD_FOLDER = os.getenv("UPLOAD_FOLDER", "uploads")
     
     # 경로 설정
     BASE_DIR = Path(__file__).parent
     UPLOAD_DIR = BASE_DIR / UPLOAD_FOLDER
     ASSETS_DIR = BASE_DIR / "assets"
+    RESULTS_FOLDER = BASE_DIR / "results"
     
     @classmethod
     def validate_config(cls):

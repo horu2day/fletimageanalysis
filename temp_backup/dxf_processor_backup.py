@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-향상된 DXF 파일 처리 모듈
-ezdxf 라이브러리를 사용하여 DXF 파일에서 도곽 정보, 텍스트 엔티티 및 모든 Block Reference/Attribute Reference를 추출
+DXF 파일 처리 모듈
+ezdxf 라이브러리를 사용하여 DXF 파일에서 도곽 정보 및 Block Reference/Attribute Reference를 추출
 """
 
 import os
 import json
 import logging
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Dict, List, Optional, Tuple, Union, Any
 from dataclasses import dataclass, asdict, field
 
 try:
@@ -15,7 +15,6 @@ try:
     from ezdxf.document import Drawing
     from ezdxf.entities import Insert, Attrib, AttDef, Text, MText
     from ezdxf.layouts import BlockLayout, Modelspace
-    from ezdxf import bbox, disassemble
     EZDXF_AVAILABLE = True
 except ImportError:
     EZDXF_AVAILABLE = False
@@ -43,30 +42,6 @@ class BoundingBox:
     @property
     def center(self) -> Tuple[float, float]:
         return ((self.min_x + self.max_x) / 2, (self.min_y + self.max_y) / 2)
-    
-    def merge(self, other: 'BoundingBox') -> 'BoundingBox':
-        """다른 바운딩 박스와 병합하여 가장 큰 외곽 박스 반환"""
-        return BoundingBox(
-            min_x=min(self.min_x, other.min_x),
-            min_y=min(self.min_y, other.min_y),
-            max_x=max(self.max_x, other.max_x),
-            max_y=max(self.max_y, other.max_y)
-        )
-
-
-@dataclass
-class TextInfo:
-    """텍스트 엔티티 정보를 담는 데이터 클래스"""
-    entity_type: str  # TEXT, MTEXT, ATTRIB
-    text: str
-    position: Tuple[float, float, float]
-    height: float
-    rotation: float
-    layer: str
-    bounding_box: Optional[BoundingBox] = None
-    entity_handle: Optional[str] = None
-    style: Optional[str] = None
-    color: Optional[int] = None
 
 
 @dataclass
@@ -82,30 +57,30 @@ class AttributeInfo:
     bounding_box: Optional[BoundingBox] = None
     
     # 추가 DXF 속성들
-    prompt: Optional[str] = None
-    style: Optional[str] = None
-    invisible: bool = False
-    const: bool = False
-    verify: bool = False
-    preset: bool = False
-    align_point: Optional[Tuple[float, float, float]] = None
-    halign: int = 0
-    valign: int = 0
-    text_generation_flag: int = 0
-    oblique_angle: float = 0.0
-    width_factor: float = 1.0
-    color: Optional[int] = None
-    linetype: Optional[str] = None
-    lineweight: Optional[int] = None
+    prompt: Optional[str] = None          # 프롬프트 문자열 (ATTDEF에서 가져옴)
+    style: Optional[str] = None           # 텍스트 스타일
+    invisible: bool = False              # 보이지 않는 속성
+    const: bool = False                  # 상수 속성
+    verify: bool = False                 # 검증 필요
+    preset: bool = False                 # 프롬프트 없이 삽입
+    align_point: Optional[Tuple[float, float, float]] = None  # 정렬점
+    halign: int = 0                      # 수평 정렬 (0=LEFT, 2=RIGHT, etc.)
+    valign: int = 0                      # 수직 정렬 (0=BASELINE, 1=BOTTOM, etc.) 
+    text_generation_flag: int = 0         # 텍스트 생성 플래그
+    oblique_angle: float = 0.0           # 기울기 각도
+    width_factor: float = 1.0            # 폭 비율
+    color: Optional[int] = None          # 색상 코드
+    linetype: Optional[str] = None       # 선 타입
+    lineweight: Optional[int] = None     # 선 굵기
     
     # 좌표 정보
-    insert_x: float = 0.0
-    insert_y: float = 0.0
-    insert_z: float = 0.0
+    insert_x: float = 0.0                # X 좌표
+    insert_y: float = 0.0                # Y 좌표
+    insert_z: float = 0.0                # Z 좌표
     
     # 계산된 정보
-    estimated_width: float = 0.0
-    entity_handle: Optional[str] = None
+    estimated_width: float = 0.0         # 추정 텍스트 폭
+    entity_handle: Optional[str] = None   # DXF 엔티티 핸들
 
 
 @dataclass
@@ -123,46 +98,36 @@ class BlockInfo:
 @dataclass
 class TitleBlockInfo:
     """도곽 정보를 담는 데이터 클래스"""
-    drawing_name: Optional[str] = None
-    drawing_number: Optional[str] = None
-    construction_field: Optional[str] = None
-    construction_stage: Optional[str] = None
-    scale: Optional[str] = None
-    project_name: Optional[str] = None
-    designer: Optional[str] = None
-    date: Optional[str] = None
-    revision: Optional[str] = None
-    location: Optional[str] = None
-    bounding_box: Optional[BoundingBox] = None
-    block_name: Optional[str] = None
+    drawing_name: Optional[str] = None          # 도면명
+    drawing_number: Optional[str] = None        # 도면번호
+    construction_field: Optional[str] = None    # 건설분야
+    construction_stage: Optional[str] = None    # 건설단계
+    scale: Optional[str] = None                 # 축척
+    project_name: Optional[str] = None          # 프로젝트명
+    designer: Optional[str] = None              # 설계자
+    date: Optional[str] = None                  # 날짜
+    revision: Optional[str] = None              # 리비전
+    location: Optional[str] = None              # 위치
+    bounding_box: Optional[BoundingBox] = None  # 도곽 전체 바운딩 박스
+    block_name: Optional[str] = None            # 도곽 블록 이름
     
     # 모든 attributes 정보 저장
-    all_attributes: List[AttributeInfo] = field(default_factory=list)
-    attributes_count: int = 0
+    all_attributes: List[AttributeInfo] = field(default_factory=list)  # 도곽의 모든 속성 정보 리스트
+    attributes_count: int = 0                   # 속성 개수
     
     # 추가 메타데이터
-    block_position: Optional[Tuple[float, float, float]] = None
-    block_scale: Optional[Tuple[float, float, float]] = None
-    block_rotation: float = 0.0
-    block_layer: Optional[str] = None
+    block_position: Optional[Tuple[float, float, float]] = None  # 블록 위치
+    block_scale: Optional[Tuple[float, float, float]] = None     # 블록 스케일
+    block_rotation: float = 0.0                                  # 블록 회전각
+    block_layer: Optional[str] = None                            # 블록 레이어
     
     def __post_init__(self):
         """초기화 후 처리"""
         self.attributes_count = len(self.all_attributes)
 
 
-@dataclass
-class ComprehensiveExtractionResult:
-    """종합적인 추출 결과를 담는 데이터 클래스"""
-    text_entities: List[TextInfo] = field(default_factory=list)
-    all_block_references: List[BlockInfo] = field(default_factory=list)
-    title_block: Optional[TitleBlockInfo] = None
-    overall_bounding_box: Optional[BoundingBox] = None
-    summary: Dict[str, Any] = field(default_factory=dict)
-
-
-class EnhancedDXFProcessor:
-    """향상된 DXF 파일 처리 클래스"""
+class DXFProcessor:
+    """DXF 파일 처리 클래스"""
     
     # 도곽 식별을 위한 키워드 정의
     TITLE_BLOCK_KEYWORDS = {
@@ -221,174 +186,28 @@ class EnhancedDXFProcessor:
             self.logger.error(f"DXF 문서 로드 실패: {e}")
             return None
     
-    def _is_empty_text(self, text: str) -> bool:
-        """텍스트가 비어있는지 확인 (공백 문자만 있거나 완전히 비어있는 경우)"""
-        return not text or text.strip() == ""
-    
-    def calculate_comprehensive_bounding_box(self, doc: Drawing) -> Optional[BoundingBox]:
-        """전체 문서의 종합적인 바운딩 박스 계산 (ezdxf.bbox 사용)"""
-        try:
-            msp = doc.modelspace()
-            
-            # ezdxf의 bbox 모듈을 사용하여 전체 바운딩 박스 계산
-            cache = bbox.Cache()
-            overall_bbox = bbox.extents(msp, cache=cache)
-            
-            if overall_bbox:
-                self.logger.info(f"전체 바운딩 박스: {overall_bbox}")
-                return BoundingBox(
-                    min_x=overall_bbox.extmin.x,
-                    min_y=overall_bbox.extmin.y,
-                    max_x=overall_bbox.extmax.x,
-                    max_y=overall_bbox.extmax.y
-                )
-            else:
-                self.logger.warning("바운딩 박스 계산 실패")
-                return None
-                
-        except Exception as e:
-            self.logger.warning(f"바운딩 박스 계산 중 오류: {e}")
-            return None
-    
-    def extract_all_text_entities(self, doc: Drawing) -> List[TextInfo]:
-        """모든 텍스트 엔티티 추출 (TEXT, MTEXT, DBTEXT)"""
-        text_entities = []
-        
-        try:
-            msp = doc.modelspace()
-            
-            # TEXT 엔티티 추출
-            for text_entity in msp.query('TEXT'):
-                text_content = getattr(text_entity.dxf, 'text', '')
-                if not self._is_empty_text(text_content):
-                    text_info = self._extract_text_info(text_entity, 'TEXT')
-                    if text_info:
-                        text_entities.append(text_info)
-            
-            # MTEXT 엔티티 추출
-            for mtext_entity in msp.query('MTEXT'):
-                # MTEXT는 .text 속성 사용
-                text_content = getattr(mtext_entity, 'text', '') or getattr(mtext_entity.dxf, 'text', '')
-                if not self._is_empty_text(text_content):
-                    text_info = self._extract_text_info(mtext_entity, 'MTEXT')
-                    if text_info:
-                        text_entities.append(text_info)
-            
-            # ATTRIB 엔티티 추출 (블록 외부의 독립적인 속성)
-            for attrib_entity in msp.query('ATTRIB'):
-                text_content = getattr(attrib_entity.dxf, 'text', '')
-                if not self._is_empty_text(text_content):
-                    text_info = self._extract_text_info(attrib_entity, 'ATTRIB')
-                    if text_info:
-                        text_entities.append(text_info)
-            
-            # 페이퍼스페이스도 확인
-            for layout_name in doc.layout_names_in_taborder():
-                if layout_name.startswith('*'):  # 모델스페이스 제외
-                    continue
-                try:
-                    layout = doc.paperspace(layout_name)
-                    
-                    # TEXT, MTEXT, ATTRIB 추출
-                    for entity_type in ['TEXT', 'MTEXT', 'ATTRIB']:
-                        for entity in layout.query(entity_type):
-                            if entity_type == 'MTEXT':
-                                text_content = getattr(entity, 'text', '') or getattr(entity.dxf, 'text', '')
-                            else:
-                                text_content = getattr(entity.dxf, 'text', '')
-                            
-                            if not self._is_empty_text(text_content):
-                                text_info = self._extract_text_info(entity, entity_type)
-                                if text_info:
-                                    text_entities.append(text_info)
-                                    
-                except Exception as e:
-                    self.logger.warning(f"레이아웃 {layout_name} 처리 중 오류: {e}")
-            
-            self.logger.info(f"총 {len(text_entities)}개의 텍스트 엔티티를 찾았습니다.")
-            return text_entities
-            
-        except Exception as e:
-            self.logger.error(f"텍스트 엔티티 추출 중 오류: {e}")
-            return []
-    
-    def _extract_text_info(self, entity, entity_type: str) -> Optional[TextInfo]:
-        """텍스트 엔티티에서 정보 추출"""
-        try:
-            # 텍스트 내용 추출
-            if entity_type == 'MTEXT':
-                text_content = getattr(entity, 'text', '') or getattr(entity.dxf, 'text', '')
-            else:
-                text_content = getattr(entity.dxf, 'text', '')
-            
-            # 위치 정보
-            insert_point = getattr(entity.dxf, 'insert', (0, 0, 0))
-            position = (
-                insert_point.x if hasattr(insert_point, 'x') else insert_point[0],
-                insert_point.y if hasattr(insert_point, 'y') else insert_point[1],
-                insert_point.z if hasattr(insert_point, 'z') else insert_point[2]
-            )
-            
-            # 기본 속성
-            height = getattr(entity.dxf, 'height', 1.0)
-            rotation = getattr(entity.dxf, 'rotation', 0.0)
-            layer = getattr(entity.dxf, 'layer', '0')
-            entity_handle = getattr(entity.dxf, 'handle', None)
-            style = getattr(entity.dxf, 'style', None)
-            color = getattr(entity.dxf, 'color', None)
-            
-            # 바운딩 박스 계산
-            bounding_box = self._calculate_text_bounding_box(entity)
-            
-            return TextInfo(
-                entity_type=entity_type,
-                text=text_content,
-                position=position,
-                height=height,
-                rotation=rotation,
-                layer=layer,
-                bounding_box=bounding_box,
-                entity_handle=entity_handle,
-                style=style,
-                color=color
-            )
-            
-        except Exception as e:
-            self.logger.warning(f"텍스트 정보 추출 중 오류: {e}")
-            return None
-    
-    def _calculate_text_bounding_box(self, entity) -> Optional[BoundingBox]:
+    def calculate_text_bounding_box(self, entity: Union[Text, MText, Attrib]) -> Optional[BoundingBox]:
         """텍스트 엔티티의 바운딩 박스 계산"""
         try:
-            # ezdxf bbox 모듈 사용
-            entity_bbox = bbox.extents([entity])
-            if entity_bbox:
-                return BoundingBox(
-                    min_x=entity_bbox.extmin.x,
-                    min_y=entity_bbox.extmin.y,
-                    max_x=entity_bbox.extmax.x,
-                    max_y=entity_bbox.extmax.y
-                )
-        except Exception as e:
-            self.logger.debug(f"바운딩 박스 계산 실패, 추정값 사용: {e}")
-            
-        # 대안: 추정 계산
-        try:
             if hasattr(entity, 'dxf'):
+                # 텍스트 위치 가져오기
                 insert_point = getattr(entity.dxf, 'insert', (0, 0, 0))
                 height = getattr(entity.dxf, 'height', 1.0)
                 
-                # 텍스트 내용 길이 추정
-                if hasattr(entity, 'text'):
-                    text_content = entity.text
-                elif hasattr(entity.dxf, 'text'):
+                # 텍스트 내용 길이 추정 (폰트에 따라 다르지만 대략적으로)
+                text_content = ""
+                if hasattr(entity.dxf, 'text'):
                     text_content = entity.dxf.text
-                else:
-                    text_content = ""
+                elif hasattr(entity, 'plain_text'):
+                    text_content = entity.plain_text()
                 
                 # 텍스트 너비 추정 (높이의 0.6배 * 글자 수)
                 estimated_width = len(text_content) * height * 0.6
                 
+                # 회전 고려 (기본값)
+                rotation = getattr(entity.dxf, 'rotation', 0)
+                
+                # 바운딩 박스 계산
                 x, y = insert_point[0], insert_point[1]
                 
                 return BoundingBox(
@@ -401,8 +220,8 @@ class EnhancedDXFProcessor:
             self.logger.warning(f"텍스트 바운딩 박스 계산 실패: {e}")
             return None
     
-    def extract_all_block_references(self, doc: Drawing) -> List[BlockInfo]:
-        """모든 Block Reference 추출 (재귀적으로 중첩된 블록도 포함)"""
+    def extract_block_references(self, doc: Drawing) -> List[BlockInfo]:
+        """문서에서 모든 Block Reference 추출"""
         block_refs = []
         
         try:
@@ -426,14 +245,6 @@ class EnhancedDXFProcessor:
                             block_refs.append(block_info)
                 except Exception as e:
                     self.logger.warning(f"레이아웃 {layout_name} 처리 중 오류: {e}")
-            
-            # 블록 정의 내부도 재귀적으로 검사
-            for block_layout in doc.blocks:
-                if not block_layout.name.startswith('*'):  # 시스템 블록 제외
-                    for insert in block_layout.query('INSERT'):
-                        block_info = self._process_block_reference(doc, insert)
-                        if block_info:
-                            block_refs.append(block_info)
             
             self.logger.info(f"총 {len(block_refs)}개의 블록 참조를 찾았습니다.")
             return block_refs
@@ -479,18 +290,16 @@ class EnhancedDXFProcessor:
             except Exception as e:
                 self.logger.debug(f"ATTDEF 정보 수집 실패: {e}")
             
-            # ATTRIB 속성 추출 및 ATTDEF 정보와 결합 (빈 텍스트 제외)
+            # ATTRIB 속성 추출 및 ATTDEF 정보와 결합
             attributes = []
             for attrib in insert.attribs:
                 attr_info = self._extract_attribute_info(attrib)
-                if attr_info and not self._is_empty_text(attr_info.text):
+                if attr_info and attr_info.tag in attdef_info:
                     # ATTDEF에서 프롬프트 정보 추가
-                    if attr_info.tag in attdef_info:
-                        attr_info.prompt = attdef_info[attr_info.tag]['prompt']
+                    attr_info.prompt = attdef_info[attr_info.tag]['prompt']
+                
+                if attr_info:
                     attributes.append(attr_info)
-            
-            # 블록 바운딩 박스 계산
-            block_bbox = self._calculate_block_bounding_box(insert)
             
             return BlockInfo(
                 name=block_name,
@@ -498,33 +307,15 @@ class EnhancedDXFProcessor:
                 scale=scale,
                 rotation=rotation,
                 layer=layer,
-                attributes=attributes,
-                bounding_box=block_bbox
+                attributes=attributes
             )
             
         except Exception as e:
             self.logger.warning(f"블록 참조 처리 중 오류: {e}")
             return None
     
-    def _calculate_block_bounding_box(self, insert: Insert) -> Optional[BoundingBox]:
-        """블록의 바운딩 박스 계산"""
-        try:
-            # ezdxf bbox 모듈 사용
-            block_bbox = bbox.extents([insert])
-            if block_bbox:
-                return BoundingBox(
-                    min_x=block_bbox.extmin.x,
-                    min_y=block_bbox.extmin.y,
-                    max_x=block_bbox.extmax.x,
-                    max_y=block_bbox.extmax.y
-                )
-        except Exception as e:
-            self.logger.debug(f"블록 바운딩 박스 계산 실패: {e}")
-            
-        return None
-    
     def _extract_attribute_info(self, attrib: Attrib) -> Optional[AttributeInfo]:
-        """Attribute Reference에서 모든 정보 추출 (빈 텍스트 포함)"""
+        """Attribute Reference에서 모든 정보 추출"""
         try:
             # 기본 속성
             tag = getattr(attrib.dxf, 'tag', '')
@@ -575,11 +366,14 @@ class EnhancedDXFProcessor:
             # 엔티티 핸들
             entity_handle = getattr(attrib.dxf, 'handle', None)
             
-            # 텍스트 폭 추정
+            # 텍스트 폭 추정 (높이의 0.6배 * 글자 수)
             estimated_width = len(text) * height * 0.6 * width_factor
             
             # 바운딩 박스 계산
-            bounding_box = self._calculate_text_bounding_box(attrib)
+            bounding_box = self.calculate_text_bounding_box(attrib)
+            
+            # 프롬프트 정보는 ATTDEF에서 가져와야 함 (필요시 별도 처리)
+            prompt = None
             
             return AttributeInfo(
                 tag=tag,
@@ -590,7 +384,7 @@ class EnhancedDXFProcessor:
                 rotation=rotation,
                 layer=layer,
                 bounding_box=bounding_box,
-                prompt=None,  # 나중에 ATTDEF에서 설정
+                prompt=prompt,
                 style=style,
                 invisible=invisible,
                 const=const,
@@ -658,11 +452,11 @@ class EnhancedDXFProcessor:
         return any(keyword.lower() in text_lower for keyword in keywords)
     
     def _extract_title_block_info(self, block_ref: BlockInfo) -> TitleBlockInfo:
-        """도곽 블록에서 상세 정보 추출"""
+        """도곽 블록에서 상세 정보 추출 - 모든 attributes 정보 포함"""
         # TitleBlockInfo 객체 생성
         title_block = TitleBlockInfo(
             block_name=block_ref.name,
-            all_attributes=block_ref.attributes.copy(),
+            all_attributes=block_ref.attributes.copy(),  # 모든 attributes 정보 저장
             block_position=block_ref.position,
             block_scale=block_ref.scale,
             block_rotation=block_ref.rotation,
@@ -671,6 +465,7 @@ class EnhancedDXFProcessor:
         
         # 속성들을 분석하여 도곽 정보 매핑
         for attr in block_ref.attributes:
+            tag_lower = attr.tag.lower()
             text_value = attr.text.strip()
             
             if not text_value:
@@ -698,23 +493,51 @@ class EnhancedDXFProcessor:
             elif self._contains_keyword(attr.tag, '위치') or self._contains_keyword(attr.text, '위치'):
                 title_block.location = text_value
         
-        # 도곽 바운딩 박스는 블록의 바운딩 박스 사용
-        title_block.bounding_box = block_ref.bounding_box
+        # 도곽 전체 바운딩 박스 계산
+        title_block.bounding_box = self._calculate_title_block_bounding_box(block_ref)
         
         # 속성 개수 업데이트
         title_block.attributes_count = len(title_block.all_attributes)
         
-        self.logger.info(f"도곽 '{block_ref.name}'에서 {title_block.attributes_count}개의 속성 추출 완료")
+        # 디버깅 로그 - 모든 attributes 정보 출력
+        self.logger.info(f"도곽 '{block_ref.name}'에서 {title_block.attributes_count}개의 속성 추출:")
+        for i, attr in enumerate(title_block.all_attributes):
+            self.logger.debug(f"  [{i+1}] Tag: '{attr.tag}', Text: '{attr.text}', "
+                             f"Position: ({attr.insert_x:.2f}, {attr.insert_y:.2f}, {attr.insert_z:.2f}), "
+                             f"Height: {attr.height:.2f}, Prompt: '{attr.prompt or 'N/A'}'")
         
         return title_block
     
-    def process_dxf_file_comprehensive(self, file_path: str) -> Dict[str, Any]:
-        """DXF 파일 종합적인 처리"""
+    def _calculate_title_block_bounding_box(self, block_ref: BlockInfo) -> Optional[BoundingBox]:
+        """도곽의 전체 바운딩 박스 계산"""
+        try:
+            valid_boxes = [attr.bounding_box for attr in block_ref.attributes 
+                          if attr.bounding_box is not None]
+            
+            if not valid_boxes:
+                self.logger.warning("유효한 바운딩 박스가 없습니다.")
+                return None
+            
+            # 모든 바운딩 박스를 포함하는 최외곽 박스 계산
+            min_x = min(box.min_x for box in valid_boxes)
+            min_y = min(box.min_y for box in valid_boxes)
+            max_x = max(box.max_x for box in valid_boxes)
+            max_y = max(box.max_y for box in valid_boxes)
+            
+            return BoundingBox(min_x=min_x, min_y=min_y, max_x=max_x, max_y=max_y)
+            
+        except Exception as e:
+            self.logger.warning(f"도곽 바운딩 박스 계산 실패: {e}")
+            return None
+    
+    def process_dxf_file(self, file_path: str) -> Dict[str, Any]:
+        """DXF 파일 전체 처리"""
         result = {
             'success': False,
             'error': None,
             'file_path': file_path,
-            'comprehensive_result': None,
+            'title_block': None,
+            'block_references': [],
             'summary': {}
         }
         
@@ -730,46 +553,25 @@ class EnhancedDXFProcessor:
                 result['error'] = "DXF 문서를 로드할 수 없습니다."
                 return result
             
-            # 종합적인 추출 시작
-            comprehensive_result = ComprehensiveExtractionResult()
+            # Block Reference 추출
+            block_refs = self.extract_block_references(doc)
+            result['block_references'] = [asdict(block_ref) for block_ref in block_refs]
             
-            # 1. 모든 텍스트 엔티티 추출
-            self.logger.info("텍스트 엔티티 추출 중...")
-            comprehensive_result.text_entities = self.extract_all_text_entities(doc)
+            # 도곽 정보 추출
+            title_block = self.identify_title_block(block_refs)
+            if title_block:
+                result['title_block'] = asdict(title_block)
             
-            # 2. 모든 블록 참조 추출
-            self.logger.info("블록 참조 추출 중...")
-            comprehensive_result.all_block_references = self.extract_all_block_references(doc)
-            
-            # 3. 도곽 정보 추출
-            self.logger.info("도곽 정보 추출 중...")
-            comprehensive_result.title_block = self.identify_title_block(comprehensive_result.all_block_references)
-            
-            # 4. 전체 바운딩 박스 계산
-            self.logger.info("전체 바운딩 박스 계산 중...")
-            comprehensive_result.overall_bounding_box = self.calculate_comprehensive_bounding_box(doc)
-            
-            # 5. 요약 정보 생성
-            comprehensive_result.summary = {
-                'total_text_entities': len(comprehensive_result.text_entities),
-                'total_block_references': len(comprehensive_result.all_block_references),
-                'title_block_found': comprehensive_result.title_block is not None,
-                'title_block_name': comprehensive_result.title_block.block_name if comprehensive_result.title_block else None,
-                'total_attributes': sum(len(br.attributes) for br in comprehensive_result.all_block_references),
-                'non_empty_attributes': sum(len([attr for attr in br.attributes if not self._is_empty_text(attr.text)]) 
-                                          for br in comprehensive_result.all_block_references),
-                'overall_bounding_box': comprehensive_result.overall_bounding_box.__dict__ if comprehensive_result.overall_bounding_box else None
+            # 요약 정보
+            result['summary'] = {
+                'total_blocks': len(block_refs),
+                'title_block_found': title_block is not None,
+                'title_block_name': title_block.block_name if title_block else None,
+                'attributes_count': sum(len(br.attributes) for br in block_refs)
             }
             
-            # 결과 저장
-            result['comprehensive_result'] = asdict(comprehensive_result)
-            result['summary'] = comprehensive_result.summary
             result['success'] = True
-            
-            self.logger.info(f"DXF 파일 종합 처리 완료: {file_path}")
-            self.logger.info(f"추출 요약: 텍스트 엔티티 {comprehensive_result.summary['total_text_entities']}개, "
-                           f"블록 참조 {comprehensive_result.summary['total_block_references']}개, "
-                           f"비어있지 않은 속성 {comprehensive_result.summary['non_empty_attributes']}개")
+            self.logger.info(f"DXF 파일 처리 완료: {file_path}")
             
         except Exception as e:
             self.logger.error(f"DXF 파일 처리 중 오류: {e}")
@@ -794,10 +596,6 @@ class EnhancedDXFProcessor:
             return False
 
 
-# 기존 클래스명과의 호환성을 위한 별칭
-DXFProcessor = EnhancedDXFProcessor
-
-
 def main():
     """테스트용 메인 함수"""
     logging.basicConfig(level=logging.INFO)
@@ -806,66 +604,30 @@ def main():
         print("ezdxf 라이브러리가 설치되지 않았습니다.")
         return
     
-    processor = EnhancedDXFProcessor()
+    processor = DXFProcessor()
     
     # 테스트 파일 경로 (실제 파일 경로로 변경 필요)
     test_file = "test_drawing.dxf"
     
     if os.path.exists(test_file):
-        result = processor.process_dxf_file_comprehensive(test_file)
+        result = processor.process_dxf_file(test_file)
         
         if result['success']:
-            print("DXF 파일 종합 처리 성공!")
-            summary = result['summary']
-            print(f"텍스트 엔티티: {summary['total_text_entities']}")
-            print(f"블록 참조: {summary['total_block_references']}")
-            print(f"도곽 발견: {summary['title_block_found']}")
-            print(f"비어있지 않은 속성: {summary['non_empty_attributes']}")
+            print("DXF 파일 처리 성공!")
+            print(f"블록 수: {result['summary']['total_blocks']}")
+            print(f"도곽 발견: {result['summary']['title_block_found']}")
             
-            if summary['overall_bounding_box']:
-                bbox_info = summary['overall_bounding_box']
-                print(f"전체 바운딩 박스: ({bbox_info['min_x']:.2f}, {bbox_info['min_y']:.2f}) ~ "
-                      f"({bbox_info['max_x']:.2f}, {bbox_info['max_y']:.2f})")
+            if result['title_block']:
+                print("\n도곽 정보:")
+                title_block = result['title_block']
+                for key, value in title_block.items():
+                    if value and key != 'bounding_box':
+                        print(f"  {key}: {value}")
         else:
             print(f"처리 실패: {result['error']}")
     else:
         print(f"테스트 파일을 찾을 수 없습니다: {test_file}")
 
 
-    def process_dxf_file(self, file_path: str) -> Dict[str, Any]:
-        """
-        기존 코드와의 호환성을 위한 메서드
-        process_dxf_file_comprehensive를 호출하고 기존 형식으로 변환
-        """
-        try:
-            # 새로운 종합 처리 메서드 호출
-            comprehensive_result = self.process_dxf_file_comprehensive(file_path)
-            
-            if not comprehensive_result['success']:
-                return comprehensive_result
-            
-            # 기존 형식으로 변환
-            comp_data = comprehensive_result['comprehensive_result']
-            
-            # 기존 형식으로 데이터 재구성
-            result = {
-                'success': True,
-                'error': None,
-                'file_path': file_path,
-                'title_block': comp_data.get('title_block'),
-                'block_references': comp_data.get('all_block_references', []),
-                'summary': comp_data.get('summary', {})
-            }
-            
-            return result
-            
-        except Exception as e:
-            self.logger.error(f"DXF 파일 처리 중 오류: {e}")
-            return {
-                'success': False,
-                'error': str(e),
-                'file_path': file_path,
-                'title_block': None,
-                'block_references': [],
-                'summary': {}
-            }
+if __name__ == "__main__":
+    main()

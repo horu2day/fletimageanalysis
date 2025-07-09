@@ -1,21 +1,33 @@
-# PDF 도면 분석기
+# PDF/DXF 문서 분석기
 
-Flet 기반의 PDF 업로드 및 Gemini API 이미지 분석 애플리케이션입니다. PDF 파일의 도면, 문서, 이미지를 Google Gemini AI를 통해 분석하여 상세한 정보를 제공합니다.
+Flet 기반의 PDF 및 DXF 파일 업로드 및 분석 애플리케이션입니다. PDF 파일은 Google Gemini AI를 통해 이미지 분석을, DXF 파일은 ezdxf 라이브러리를 통해 도곽 정보 및 Block Reference/Attribute Reference를 추출하여 상세한 정보를 제공합니다.
 
 ![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)
 ![Flet](https://img.shields.io/badge/Flet-0.25.1+-orange.svg)
+![ezdxf](https://img.shields.io/badge/ezdxf-1.4.2+-red.svg)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
 
 ## 🌟 주요 기능
 
+### PDF 분석 기능
 - 📄 **PDF 파일 업로드**: 간편한 드래그 앤 드롭 인터페이스
 - 🔍 **AI 이미지 분석**: Google Gemini API를 통한 고급 이미지 분석
+- 🏢 **조직별 스키마**: 국토교통부/한국도로공사 전용 분석 스키마
+- 👁️ **PDF 뷰어 모달**: 별도 창에서 PDF 미리보기 및 페이지 네비게이션
+
+### DXF 분석 기능 (NEW)
+- 🏗️ **DXF 파일 지원**: CAD 도면 파일 (.dxf) 업로드 및 분석
+- 📐 **도곽 정보 추출**: 도면명, 도면번호, 건설분야, 건설단계, 축척 등
+- 🔧 **Block Reference 분석**: 블록 참조 및 속성 정보 완전 추출
+- 📋 **Attribute Reference**: 모든 속성의 tag, text, prompt, position, bounding box 정보
+- 📏 **바운딩 박스 계산**: 텍스트 및 블록의 정확한 좌표 정보
+- 🎯 **ATTDEF 정보 수집**: 블록 정의에서 프롬프트 정보 자동 매핑
+
+### 공통 기능
 - 📊 **실시간 진행률**: 분석 과정을 실시간으로 확인
 - 🎨 **현대적인 UI**: 좌우 분할 레이아웃 및 Material Design 기반 인터페이스
 - ⚙️ **다양한 분석 모드**: 기본, 상세, 사용자 정의 분석
 - 💾 **결과 저장**: 분석 결과를 텍스트/JSON 파일로 저장
-- 👁️ **PDF 뷰어 모달**: 별도 창에서 PDF 미리보기 및 페이지 네비게이션
-- 🏢 **조직별 스키마**: 국토교통부/한국도로공사 전용 분석 스키마
 - 📱 **반응형 디자인**: 다양한 화면 크기에 대응하는 인터페이스
 
 ## 🚀 빠른 시작

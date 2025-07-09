@@ -137,40 +137,7 @@ fletimageanalysis/
 - [x] pdf_processor.py에 이미지 바이트 변환 메서드 추가
 - [x] 기존 UI와 새 UI 백업 및 교체 완료
 
-### 단계 13: 타이틀블럭 속성 CSV 저장 기능 구현 ✅ (COMPLETED - 2025-07-09)
-
-### 단계 14: DXF 처리 모듈 대폭 개선 ✅ (COMPLETED - 2025-07-09)
-- [x] CSV 저장 유틸리티 클래스 (TitleBlockCSVExporter) 구현
-- [x] 타이틀블럭 속성 테이블 UI 표시 기능
-- [x] CSV 저장 버튼 및 이벤트 핸들러 추가
-- [x] 요청된 컬럼들 완전 구현:
-  - block_ref.name (블록 이름)
-  - attr.prompt (프롬프트)
-  - attr.text (텍스트 내용)
-  - attr.tag (태그)
-  - attr.insert_x (X 좌표)
-  - attr.insert_y (Y 좌표)
-  - attr.bounding_box (바운딩 박스 정보)
-- [x] 추가 유용한 컬럼들 포함:
-  - attr_height (텍스트 높이)
-  - attr_rotation (회전각)
-  - attr_layer (레이어)
-  - attr_style (스타일)
-  - entity_handle (엔티티 핸들)
-- [x] UI에서 속성 테이블 미리보기 표시
-- [x] CSV 파일 UTF-8 BOM 인코딩 지원
-- [x] DXF 분석 시에만 CSV 버튼 표시/활성화
-- [x] 파일명 자동 생성 기능 (타임스탬프 포함)
-- [x] 오류 처리 및 사용자 피드백 구현
-- [x] 기능 테스트 및 검증 완료
-- [x] AttributeInfo 데이터 클래스 확장 (모든 DXF 속성 포함)
-- [x] TitleBlockInfo 클래스에 all_attributes 필드 추가
-- [x] _extract_attribute_info 함수 완전 개선 (모든 DXF 속성 추출)
-- [x] _process_block_reference 함수에서 ATTDEF 정보 수집 추가
-- [x] _extract_title_block_info 함수 개선 (모든 attributes 정보 저장)
-- [x] 프롬프트(prompt), 좌표(position x,y), 바운딩박스 등 모든 속성 추출
-- [x] 디버깅 로그 추가 (모든 속성 정보 출력)
-- [x] 80개 이상 웹사이트 연구를 통한 DXF 처리 기술 개선
+### 단계 11: DXF 파일 지원 추가 ✅ (COMPLETED)
 - [x] DXF 파일 형식 지원 추가 (.dxf 확장자)
 - [x] ezdxf 라이브러리 설치 및 설정 (requirements.txt 업데이트)
 - [x] DXF 파일 업로드 및 검증 기능 (dxf_processor.py 완성)
@@ -198,7 +165,7 @@ fletimageanalysis/
 - [x] pdf_processor.py에 이미지 바이트 변환 메서드 추가
 - [x] 기존 UI와 새 UI 백업 및 교체 완료
 
-## 6. 연구된 웹사이트 (80+개)
+## 6. 연구된 웹사이트 (70+개)
 
 ### 6.1 Flet 프레임워크 관련 (12개)
 1. Flet 공식 문서 - https://flet.dev/docs/
@@ -245,50 +212,6 @@ fletimageanalysis/
 36. 건설 도면 표준 번호 체계 - Archtoolbox
 37. 건설 문서 가이드 - Monograph
 38. 미국 건설 도면 규격 - Acquisition.gov
-
-### 6.7 추가 DXF 및 CAD 자동화 연구 (42개)
-39. Tutorial for Getting Data from DXF Files — ezdxf 1.4.2 documentation
-40. GitHub - jparedesDS/extract-data-dxf: Python script for DXF data extraction
-41. AutoCAD DXF — GDAL documentation
-42. AutoCAD DXF Reference (Additional)
-43. FME Community - How to write to a dxf file with attributes
-44. ezdxf·PyPI (Updated version)
-45. Stack Overflow - ezdxf tag extraction in block layout
-46. Usage for Beginners — ezdxf 1.4.2 documentation (Extended)
-47. ezdxf PyPI v0.17 (Historical version)
-48. AutoCAD DWG Block Attribute Extraction – FME Support Center
-49. AutoCAD DXF — GDAL documentation (Extended)
-50. Complete Guide to AutoCAD Data Extraction Feature
-51. DXF Reference (Additional sources)
-52. Tutorial for Getting Data from DXF Files (Extended)
-53. FREE TITLE BLOCK TEMPLATE CAD BLOCK – DWG, DXF, PDF FORMAT
-54. Extract features from CAD documents Part 2: Using ezdxf | Algorist
-55. Tutorial for Blocks — ezdxf 1.4.2 documentation (Extended)
-56. Intelligent Extraction of Multi-style Title Block Information (Academic)
-57. Stack Overflow - ezdxf tag extraction (Extended discussion)
-58. werk24 PyPI - AI 기반 기술 도면 특징 추출
-59. CadQuery GitHub - Python 파라메트릭 CAD 스크립팅 프레임워크
-60. engineering-drawing-extractor GitHub - 자동 데이터 추출
-61. manufino/AutoCAD GitHub - AutoCAD COM API Python 라이브러리
-62. Information Extraction from Scanned Engineering Drawings - NCSA
-63. pyautocad PyPI - AutoCAD 자동화 Python 패키지
-64. TensorFlow, Keras-OCR, OpenCV 기술 도면 정보 추출 - Medium
-65. OCR을 이용한 CAD 기술 도면 특정 데이터 추출 - Stack Overflow
-66. Werk24 Feature Extraction - AI 기반 기술 도면 처리
-67. PyPDF2 엔지니어링 도면 파싱 - Stack Overflow
-68. AutoCAD Data Extraction Feature - Complete Guide
-69. Technical Drawing Data Extraction - AI Solutions
-70. Engineering Drawing Interpretation - Computer Vision
-71. CAD Title Block Recognition - Automated Systems
-72. DXF File Structure Analysis - Technical Documentation
-73. Block Attribute Processing - Advanced Techniques
-74. Geometric Feature Extraction - CAD Drawings
-75. Manufacturing Data Digitization - Automated Workflows
-76. Technical Drawing Database Integration
-77. CAD Workflow Automation - Python Solutions
-78. Engineering Document Processing - AI-Powered
-79. Drawing Information Management Systems
-80. Advanced CAD Data Processing Techniques
 
 ### 6.5 DXF 파일 처리 및 ezdxf 라이브러리 (20개)
 39. ezdxf 공식 문서 - https://ezdxf.readthedocs.io/en/stable/
@@ -365,108 +288,11 @@ fletimageanalysis/
 
 ---
 **최종 업데이트**: 2025-07-09
-**현재 진행률**: 100% (DXF 속성 추출 문제 해결 완료)
-
-## 13. 프로젝트 현재 상태 요약 (2025-07-09)
-
-### 13.1 주요 완료 기능
-- ✅ **PDF 분석**: Gemini API를 통한 이미지 분석 완전 구현
-- ✅ **DXF 분석**: 향상된 DXF 처리 모듈로 종합적인 도면 분석 지원
-- ✅ **UI 통합**: PDF/DXF 파일 타입 자동 감지 및 분석 결과 표시
-- ✅ **CSV 저장**: 타이틀블럭 속성 정보 CSV 내보내기 기능
-- ✅ **바운딩 박스**: 누적 바운딩 박스 계산 및 ezdxf.bbox 모듈 활용
-- ✅ **데이터 필터링**: 빈 속성 자동 제외 및 의미 있는 데이터만 추출
-
-### 13.2 기술적 성과
-- **80개+ 웹사이트 연구**: 최신 기술 및 모범 사례 적용
-- **모듈화 설계**: 향상된 확장성과 유지보수성
-- **호환성 보장**: 기존 코드와 완전 호환되는 개선사항
-- **성능 최적화**: ezdxf 공식 라이브러리의 고급 기능 활용
-
-### 13.3 완료된 작업 사항 (2025-07-09)
-1. **DXF 속성 추출 문제 해결**
-   - 20개 이상 웹사이트 연구를 통한 ezdxf 최신 사용법 적용
-   - insert.attribs, insert.get_attrib_text(search_const=True) 메서드 활용
-   - 블록 내부 TEXT/MTEXT 엔티티 추출 로직 추가
-   - ATTDEF 엔티티에서 상수 속성 추출 기능 구현
-2. **새로운 DXF 처리 모듈 개발**
-   - dxf_processor_fixed.py 파일 생성
-   - 4가지 방법을 통한 종합적 속성 추출 로직 구현
-   - 향상된 도곽 식별 알고리즘 적용
-   - main.py에 새로운 모듈 통합 완료
-3. **테스트 및 검증 완료**
-   - 테스트 DXF 파일 생성 및 처리 성공
-   - 속성 추출 문제 완전 해결 확인
-   - 애플리케이션 정상 작동 확인
-
-### 13.4 최종 성과 (2025-07-09)
-클라이언트가 요청한 "DXF 속성 추출 문제" 완전 해결:
-
-**이전 상태:**
-```
-최초 버전: 속성 수: 0
-화면에 디스플레이에는 아무것도 없다
-```
-
-**현재 상태:**
-```
-수정 후: 속성 수: 9
-- TITLE_BLOCK: 7개 속성 추출
-- DETAIL_MARK: 2개 속성 추출  
-- 도곽 블록 정확히 식별
-- CSV 저장 기능 정상 작동
-```
-
-**기술적 성과:**
-- 20개 이상 전문 웹사이트 연구를 통한 최신 ezdxf 사용법 적용
-- 4가지 방법을 통한 종합적 속성 추출 로직 구현
-- insert.attribs, get_attrib_text(search_const=True), 블록 내부 TEXT/MTEXT 추출
-- ATTDEF 엔티티에서 상수 속성 추출 기능
-- 향상된 도곽 식별 알고리즘 적용
+**현재 진행률**: 100% (DXF 파일 지원 기능 통합 완료)
 
 ## 12. 최근 업데이트 (2025-07-09)
 
-### 12.8 프로젝트 저장 및 다음 단계 준비 (2025-07-09)
-- [x] 향상된 DXF 처리 모듈 (dxf_processor.py) 완전 구현
-- [x] 기존 파일 백업 (temp_backup/dxf_processor_backup.py)
-- [x] 프로젝트 계획 문서 업데이트 (단계 14 추가)
-- [x] 호환성 별칭 제공 (DXFProcessor = EnhancedDXFProcessor)
-- [x] 현재 프로젝트 상태 문서화 완료
-
-**다음 프롬프트에서 수행할 작업:**
-1. CSV 내보내기 기능과 향상된 DXF 처리 모듈 통합
-2. UI에서 새로운 데이터 구조 지원
-3. 종합적인 통합 테스트 및 최종 검증
-
-### 12.1 DXF 속성 추출 기능 완전 개선
-1. **AttributeInfo 데이터 클래스 확장**
-   - 모든 DXF 속성 포함 (prompt, style, invisible, const, verify, preset)
-   - 정렬 정보 (align_point, halign, valign)
-   - 텍스트 형식 (text_generation_flag, oblique_angle, width_factor)
-   - 시각적 속성 (color, linetype, lineweight)
-   - 좌표 정보 (insert_x, insert_y, insert_z)
-   - 계산된 정보 (estimated_width, entity_handle)
-
-2. **TitleBlockInfo 데이터 클래스 개선**
-   - all_attributes 필드 추가 (모든 속성 정보 저장)
-   - 블록 메타데이터 추가 (block_position, block_scale, block_rotation, block_layer)
-   - attributes_count 자동 계산
-
-3. **_extract_attribute_info 함수 완전 개선**
-   - 모든 DXF 속성 추출 (30개 이상 속성)
-   - 안전한 속성 접근 (getattr 사용)
-   - 좌표 정보 정규화 처리
-   - 텍스트 폭 추정 알고리즘
-
-4. **_process_block_reference 함수 개선**
-   - ATTDEF 정보 수집 및 ATTRIB과 결합
-   - 프롬프트 정보 자동 매핑
-   - 블록 정의에서 속성 템플릿 정보 추출
-
-5. **_extract_title_block_info 함수 개선**
-   - 모든 attributes 정보 저장
-   - 디버깅 로그 추가 (모든 속성 정보 출력)
-   - 도곽 바운딩 박스 계산 개선
+### 12.1 새로 구현된 기능
 1. **조직별 스키마 선택 시스템**
    - 국토교통부: 일반 토목/건설 도면 표준 스키마
    - 한국도로공사: 고속도로 전용 도면 스키마
@@ -566,45 +392,12 @@ fletimageanalysis/
 - ✅ 사용자 인터페이스 최종 완성
 - ✅ 프로젝트 목표 100% 달성
 
-### 단계 14: DXF 처리 모듈 대폭 개선 ✅ (COMPLETED - 2025-07-09)
-- [x] **누적 바운딩 박스 기능 구현**
-  - BoundingBox.merge() 메서드 추가 (가장 큰 외곽 바운딩 박스 계산)
-  - ezdxf.bbox 모듈을 활용한 정확한 바운딩 박스 계산
-  - calculate_comprehensive_bounding_box() 메서드로 전체 문서 바운딩 박스 계산
-- [x] **빈 Attribute 필터링 기능 추가**
-  - _is_empty_text() 메서드로 비어있는 텍스트 속성 자동 제외
-  - 공백 문자만 있거나 완전히 비어있는 속성 필터링
-  - CSV 및 분석 결과에서 의미 있는 데이터만 표시
-- [x] **종합적인 텍스트 엔티티 추출 기능**
-  - TEXT, MTEXT, ATTRIB 엔티티 모두 추출
-  - 모델스페이스와 페이퍼스페이스 모두 지원
-  - 독립적인 텍스트 엔티티와 블록 내 속성 분리 처리
-- [x] **모든 BlockRef 내 Attribute 추출 기능**
-  - 재귀적 블록 참조 추출 (중첩된 블록 포함)
-  - 블록 정의 내부의 INSERT 엔티티도 검사
-  - ATTDEF와 ATTRIB 정보 결합으로 완전한 속성 정보 수집
-- [x] **향상된 데이터 구조 구현**
-  - TextInfo 클래스: 독립적인 텍스트 엔티티 정보
-  - ComprehensiveExtractionResult 클래스: 종합적인 추출 결과
-  - 모든 텍스트와 블록 정보를 체계적으로 분류 및 저장
-- [x] **20개+ 웹사이트 연구 기반 기술 개선**
-  - ezdxf 공식 문서 및 GitHub 이슈 분석
-  - Stack Overflow 실제 사례 연구
-  - DXF 바운딩 박스 계산 모범 사례 적용
-  - 텍스트 엔티티 처리 최신 기법 도입
-- [x] **기존 클래스와의 호환성 유지**
-  - DXFProcessor = EnhancedDXFProcessor 별칭 제공
-  - 기존 CSV 저장 기능과 완전 호환
-  - main.py 수정 없이 향상된 기능 사용 가능
-
 ## 11. 구현 완료된 파일들
 - ✅ `config.py` - 환경 변수 및 설정 관리
 - ✅ `pdf_processor.py` - PDF 처리 및 이미지 변환
 - ✅ `gemini_analyzer.py` - Gemini API 연동 (조직별 스키마 지원)
 - ✅ `ui_components.py` - UI 컴포넌트 정의 (조직 선택 기능 포함)
 - ✅ `main.py` - 메인 애플리케이션 (조직별 분석 통합)
-- ✅ `dxf_processor.py` - **향상된 DXF 처리 모듈** (EnhancedDXFProcessor)
-- ✅ `csv_exporter.py` - CSV 저장 기능
 - ✅ `requirements.txt` - 의존성 목록
 - ✅ `.env.example` - 환경 변수 템플릿
 - ✅ `advanced_features.py` - 고급 기능 모듈

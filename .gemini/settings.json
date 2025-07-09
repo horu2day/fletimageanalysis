@@ -1,0 +1,90 @@
+{
+  "mcpServers": {
+    "MyMCP": {
+      "command": "D:/MYCLAUDE_PROJECT/mcpmaker/OpenXmlMcpServer/bin/Debug/net8.0/OpenXmlMcpServer.exe",
+      "args": []
+    },
+    "github": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@smithery/cli@latest",
+        "run",
+        "@smithery-ai/github",
+        "--key",
+        "faeea742-0fdc-4de1-bd2b-63d6875186d1",
+        "--profile",
+        "tasty-muskox-jiXD8J"
+      ]
+    },
+    "supabase": {
+      "command": "cmd",
+      "args": [
+        "/c",
+        "npx",
+        "-y",
+        "@supabase/mcp-server-supabase@latest",
+        "--access-token",
+        "sbp_18b8744ff5e37ae58101c29ea552f15382a7d250"
+      ]
+    },
+    "taskmaster-ai": {
+      "command": "npx",
+      "args": ["-y", "--package=task-master-ai", "task-master-ai"],
+      "env": {
+        "GOOGLE_API_KEY": "AIzaSyAUyWPGBkl9fxpAh1O4uIGU87I2dpgSYOg",
+        "MODEL": "gemini-1.5-flash",
+        "MAX_TOKENS": "64000",
+        "TEMPERATURE": "0.2",
+        "DEFAULT_SUBTASKS": "5",
+        "DEFAULT_PRIORITY": "medium"
+      }
+    },
+    "markitdown": {
+      "command": "markitdown-mcp"
+    },
+    "playwright-stealth": {
+      "command": "npx",
+      "args": ["-y", "@pvinis/playwright-stealth-mcp-server"]
+    },
+    "blender": {
+      "command": "uvx",
+      "args": ["blender-mcp"]
+    },
+    "terminal": {
+      "command": "npx",
+      "args": ["-y", "@dillip285/mcp-terminal"]
+    },
+    "googleSearch": {
+      "command": "npx",
+      "args": ["-y", "g-search-mcp"]
+    },
+    "text-editor": {
+      "command": "npx",
+      "args": ["mcp-server-text-editor"]
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "D:\\MYCLAUDE_PROJECT"
+      ]
+    },
+    "context7-mcp": {
+      "command": "cmd",
+      "args": [
+        "/c",
+        "npx",
+        "-y",
+        "@smithery/cli@latest",
+        "run",
+        "@upstash/context7-mcp",
+        "--key",
+        "faeea742-0fdc-4de1-bd2b-63d6875186d1",
+        "--profile",
+        "tasty-muskox-jiXD8J"
+      ]
+    }
+  }
+}

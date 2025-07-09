@@ -16,10 +16,11 @@ import time
 # 프로젝트 모듈 임포트
 from config import Config
 from pdf_processor import PDFProcessor
-from dxf_processor import DXFProcessor  # NEW - DXF 처리기
+from dxf_processor_fixed import FixedDXFProcessor as DXFProcessor  # NEW - 수정된 DXF 처리기
 from gemini_analyzer import GeminiAnalyzer
 from ui_components import UIComponents
 from utils import AnalysisResultSaver, DateTimeUtils
+from csv_exporter import TitleBlockCSVExporter  # NEW - CSV 저장 기능
 
 # 로깅 설정
 logging.basicConfig(
@@ -35,10 +36,12 @@ class DocumentAnalyzerApp:
         self.page = page
         self.pdf_processor = PDFProcessor()
         self.dxf_processor = DXFProcessor()  # NEW - DXF 처리기
+        self.csv_exporter = TitleBlockCSVExporter()  # NEW - CSV 저장기
         self.gemini_analyzer = None
         self.current_file_path = None  # PDF/DXF 파일 경로
         self.current_file_type = None  # 파일 타입 (pdf 또는 dxf)
         self.current_pdf_info = None  # PDF 전용
+        self.current_title_block_info = None  # DXF 타이틀블럭 정보
         self.analysis_results = {}
         self.result_saver = AnalysisResultSaver("results")
         self.analysis_start_time = None
@@ -55,6 +58,8 @@ class DocumentAnalyzerApp:
         self.results_container = None
         self.save_text_button = None
         self.save_json_button = None
+        self.save_csv_button = None  # NEW - CSV 저장 버튼
+        self.title_block_table = None  # NEW - 타이틀블럭 속성 테이블
         self.organization_selector = None
         self.page_selector = None
         self.analysis_mode = None
@@ -73,11 +78,11 @@ class DocumentAnalyzerApp:
         self.page.padding = 0
         self.page.bgcolor = ft.Colors.GREY_100
         
-        # 윈도우 크기 설정
-        self.page.window_width = 1400
-        self.page.window_height = 900
-        self.page.window_min_width = 1200
-        self.page.window_min_height = 800
+        # 윈도우 크기 설정 - 버튼이 모두 보이게 세로 길게, 가로는 10% 줄임
+        self.page.window.width = 980  # 1400 * 0.9 = 1260
+        self.page.window.height = 980  # 1000 -> 1080으로 증가
+        self.page.window.min_width = 1080  # 1200 * 0.9 = 1080
+        self.page.window.min_height = 780
         
         logger.info("페이지 설정 완료 - 새로운 좌우 분할 레이아웃")
     
@@ -252,6 +257,19 @@ class DocumentAnalyzerApp:
             )
         )
         
+        # NEW - CSV 저장 버튼 (DXF 전용)
+        self.save_csv_button = ft.ElevatedButton(
+            text="📊 CSV 저장",
+            icon=ft.Icons.TABLE_CHART,
+            disabled=True,
+            visible=False,  # 기본적으로 숨김, DXF 분석 시에만 표시
+            on_click=self.on_save_csv_click,
+            style=ft.ButtonStyle(
+                bgcolor=ft.Colors.ORANGE_100,
+                color=ft.Colors.ORANGE_800,
+            )
+        )
+        
         # 헤더와 버튼들
         header_row = ft.Row([
             ft.Text(
@@ -263,6 +281,7 @@ class DocumentAnalyzerApp:
             ft.Row([
                 self.save_text_button,
                 self.save_json_button,
+                self.save_csv_button,  # NEW - CSV 저장 버튼 추가
             ]),
         ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN)
         
@@ -607,6 +626,7 @@ class DocumentAnalyzerApp:
         self.current_file_path = None
         self.current_file_type = None
         self.current_pdf_info = None
+        self.current_title_block_info = None  # NEW - 타이틀블럭 정보 초기화
     
     def on_analysis_mode_change(self, e):
         """분석 모드 변경 핸들러"""
@@ -705,6 +725,33 @@ class DocumentAnalyzerApp:
     def on_save_json_click(self, e):
         """JSON 저장 버튼 클릭 핸들러"""
         self._save_results("json")
+    
+    def on_save_csv_click(self, e):
+        """CSV 저장 버튼 클릭 핸들러 (DXF 타이틀블럭 속성 전용)"""
+        if not self.current_title_block_info:
+            self.show_error_dialog("저장 오류", "저장할 타이틀블럭 속성 정보가 없습니다.")
+            return
+            
+        try:
+            # CSV 파일 저장
+            import os
+            filename = f"title_block_attributes_{os.path.basename(self.current_file_path).replace('.dxf', '')}"
+            saved_path = self.csv_exporter.export_title_block_attributes(
+                self.current_title_block_info, 
+                filename
+            )
+            
+            if saved_path:
+                self.show_info_dialog(
+                    "CSV 저장 완료", 
+                    f"타이틀블럭 속성 정보가 CSV 파일로 저장되었습니다:\\n\\n{saved_path}"
+                )
+            else:
+                self.show_error_dialog("저장 실패", "CSV 파일 저장 중 오류가 발생했습니다.")
+                
+        except Exception as e:
+            logger.error(f"CSV 저장 중 오류: {e}")
+            self.show_error_dialog("저장 오류", f"CSV 저장 중 오류가 발생했습니다:\\n{str(e)}")
     
     def _save_results(self, format_type: str):
         """결과 저장 공통 함수"""
@@ -853,7 +900,7 @@ class DocumentAnalyzerApp:
         
         try:
             # DXF 파일 처리
-            result = self.dxf_processor.process_dxf_file(self.current_file_path)
+            result = self.dxf_processor.process_dxf_file_comprehensive(self.current_file_path)
             
             if result['success']:
                 # 분석 결과 포맷팅
@@ -905,28 +952,34 @@ class DocumentAnalyzerApp:
         """분석 결과 표시"""
         def update_results():
             if self.analysis_results:
-                # 결과 텍스트 구성
-                result_text = "🎯 분석 요약\\n"
-                result_text += f"📊 분석된 페이지: {len(self.analysis_results)}개\\n"
-                result_text += f"⏰ 완료 시간: {DateTimeUtils.get_timestamp()}\\n"
-                result_text += f"🏢 조직 스키마: {self.organization_selector.value}\\n"
-                result_text += "=" * 60 + "\\n\\n"
+                # 결과 텍스트 구성 - 줄바꿈 올바르게 처리
+                result_text = "🎯 분석 요약\n"
+                result_text += f"📊 분석된 페이지: {len(self.analysis_results)}개\n"
+                result_text += f"⏰ 완료 시간: {DateTimeUtils.get_timestamp()}\n"
+                result_text += f"🏢 조직 스키마: {self.organization_selector.value}\n"
+                result_text += "=" * 60 + "\n\n"
                 
                 for page_num, result in self.analysis_results.items():
-                    result_text += f"📋 페이지 {page_num + 1} 분석 결과\\n"
-                    result_text += "-" * 40 + "\\n"
+                    result_text += f"📋 페이지 {page_num + 1} 분석 결과\n"
+                    result_text += "-" * 40 + "\n"
                     result_text += result
-                    result_text += "\\n\\n" + "=" * 60 + "\\n\\n"
+                    result_text += "\n\n" + "=" * 60 + "\n\n"
                 
                 self.results_text.value = result_text.strip()
                 
                 # 저장 버튼 활성화
                 self.save_text_button.disabled = False
                 self.save_json_button.disabled = False
+                
+                # PDF 분석이므로 CSV 버튼 숨김
+                self.save_csv_button.visible = False
+                self.save_csv_button.disabled = True
             else:
                 self.results_text.value = "❌ 분석 결과가 없습니다."
                 self.save_text_button.disabled = True
                 self.save_json_button.disabled = True
+                self.save_csv_button.visible = False
+                self.save_csv_button.disabled = True
                 
             self.page.update()
         
@@ -934,34 +987,37 @@ class DocumentAnalyzerApp:
         self.page.run_thread(update_results)
     
     def display_dxf_analysis_results(self, dxf_result):
-        """DXF 분석 결과 표시"""
+        """DXF 분석 결과 표시 - 타이틀블럭 속성 테이블 포함"""
         def update_results():
             if dxf_result and dxf_result['success']:
+                # 타이틀블럭 정보 저장
+                self.current_title_block_info = dxf_result.get('title_block')
+                
                 # 결과 텍스트 구성
                 import os
-                result_text = "🎯 DXF 분석 요약\\n"
-                result_text += f"📊 파일: {os.path.basename(dxf_result['file_path'])}\\n"
-                result_text += f"⏰ 완료 시간: {DateTimeUtils.get_timestamp()}\\n"
-                result_text += "=" * 60 + "\\n\\n"
+                result_text = "🎯 DXF 분석 요약\n"
+                result_text += f"📊 파일: {os.path.basename(dxf_result['file_path'])}\n"
+                result_text += f"⏰ 완료 시간: {DateTimeUtils.get_timestamp()}\n"
+                result_text += "=" * 60 + "\n\n"
                 
                 # 요약 정보
                 summary = dxf_result.get('summary', {})
-                result_text += "📋 분석 요약\\n"
-                result_text += "-" * 40 + "\\n"
-                result_text += f"전체 블록 수: {summary.get('total_blocks', 0)}\\n"
-                result_text += f"도곽 블록 발견: {'예' if summary.get('title_block_found', False) else '아니오'}\\n"
-                result_text += f"속성 수: {summary.get('attributes_count', 0)}\\n"
+                result_text += "📋 분석 요약\n"
+                result_text += "-" * 40 + "\n"
+                result_text += f"전체 블록 수: {summary.get('total_blocks', 0)}\n"
+                result_text += f"도곽 블록 발견: {'예' if summary.get('title_block_found', False) else '아니오'}\n"
+                result_text += f"속성 수: {summary.get('attributes_count', 0)}\n"
                 
                 if summary.get('title_block_name'):
-                    result_text += f"도곽 블록명: {summary['title_block_name']}\\n"
+                    result_text += f"도곽 블록명: {summary['title_block_name']}\n"
                 
-                result_text += "\\n"
+                result_text += "\n"
                 
                 # 도곽 정보
                 title_block = dxf_result.get('title_block')
                 if title_block:
-                    result_text += "🏗️ 도곽 정보\\n"
-                    result_text += "-" * 40 + "\\n"
+                    result_text += "🏗️ 도곽 정보\n"
+                    result_text += "-" * 40 + "\n"
                     
                     fields = {
                         'drawing_name': '도면명',
@@ -979,40 +1035,75 @@ class DocumentAnalyzerApp:
                     for field, label in fields.items():
                         value = title_block.get(field)
                         if value:
-                            result_text += f"{label}: {value}\\n"
+                            result_text += f"{label}: {value}\n"
                     
                     # 바운딩 박스 정보
                     bbox = title_block.get('bounding_box')
                     if bbox:
-                        result_text += f"\\n📐 도곽 위치 정보\\n"
-                        result_text += f"좌하단: ({bbox['min_x']:.2f}, {bbox['min_y']:.2f})\\n"
-                        result_text += f"우상단: ({bbox['max_x']:.2f}, {bbox['max_y']:.2f})\\n"
-                        result_text += f"크기: {bbox['max_x'] - bbox['min_x']:.2f} × {bbox['max_y'] - bbox['min_y']:.2f}\\n"
+                        result_text += "\n📐 도곽 위치 정보\n"
+                        result_text += f"좌하단: ({bbox['min_x']:.2f}, {bbox['min_y']:.2f})\n"
+                        result_text += f"우상단: ({bbox['max_x']:.2f}, {bbox['max_y']:.2f})\n"
+                        result_text += f"크기: {bbox['max_x'] - bbox['min_x']:.2f} × {bbox['max_y'] - bbox['min_y']:.2f}\n"
+                    
+                    # 타이틀블럭 속성 테이블 생성
+                    if title_block.get('all_attributes'):
+                        result_text += "\n\n📊 타이틀블럭 속성 상세 정보\n"
+                        result_text += "-" * 60 + "\n"
+                        
+                        # 테이블 데이터 생성
+                        table_data = self.csv_exporter.create_attribute_table_data(title_block)
+                        
+                        if table_data:
+                            # 테이블 헤더
+                            result_text += f"{'No.':<4} {'Tag':<15} {'Text':<25} {'Prompt':<20} {'X':<8} {'Y':<8} {'Layer':<8}\n"
+                            result_text += "-" * 100 + "\n"
+                            
+                            # 테이블 데이터 (최대 10개만 표시)
+                            for i, row in enumerate(table_data[:10]):
+                                result_text += f"{row['No.']:<4} {row['Tag'][:14]:<15} {row['Text'][:24]:<25} "
+                                result_text += f"{row['Prompt'][:19]:<20} {row['X']:<8} {row['Y']:<8} {row['Layer'][:7]:<8}\n"
+                            
+                            if len(table_data) > 10:
+                                result_text += f"... 외 {len(table_data) - 10}개 속성\n"
+                            
+                            result_text += f"\n💡 전체 {len(table_data)}개 속성을 CSV 파일로 저장할 수 있습니다.\n"
                 
                 # 블록 참조 정보
                 block_refs = dxf_result.get('block_references', [])
                 if block_refs:
-                    result_text += f"\\n📦 블록 참조 목록 ({len(block_refs)}개)\\n"
-                    result_text += "-" * 40 + "\\n"
+                    result_text += f"\n📦 블록 참조 목록 ({len(block_refs)}개)\n"
+                    result_text += "-" * 40 + "\n"
                     
                     for i, block_ref in enumerate(block_refs[:10]):  # 최대 10개까지만 표시
                         result_text += f"{i+1}. {block_ref.get('name', 'Unknown')}"
                         if block_ref.get('attributes'):
                             result_text += f" (속성 {len(block_ref['attributes'])}개)"
-                        result_text += "\\n"
+                        result_text += "\n"
                     
                     if len(block_refs) > 10:
-                        result_text += f"... 외 {len(block_refs) - 10}개 블록\\n"
+                        result_text += f"... 외 {len(block_refs) - 10}개 블록\n"
                 
                 self.results_text.value = result_text.strip()
                 
                 # 저장 버튼 활성화
                 self.save_text_button.disabled = False
                 self.save_json_button.disabled = False
+                
+                # CSV 저장 버튼 표시 및 활성화 (타이틀블럭이 있는 경우)
+                if self.current_title_block_info and self.current_title_block_info.get('all_attributes'):
+                    self.save_csv_button.visible = True
+                    self.save_csv_button.disabled = False
+                else:
+                    self.save_csv_button.visible = False
+                    self.save_csv_button.disabled = True
+                    
             else:
                 self.results_text.value = "❌ DXF 분석 결과가 없습니다."
                 self.save_text_button.disabled = True
                 self.save_json_button.disabled = True
+                self.save_csv_button.visible = False
+                self.save_csv_button.disabled = True
+                self.current_title_block_info = None
                 
             self.page.update()
         

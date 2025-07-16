@@ -10,12 +10,14 @@ Flet 기반의 PDF 및 DXF 파일 업로드 및 분석 애플리케이션입니�
 ## 🌟 주요 기능
 
 ### PDF 분석 기능
+
 - 📄 **PDF 파일 업로드**: 간편한 드래그 앤 드롭 인터페이스
 - 🔍 **AI 이미지 분석**: Google Gemini API를 통한 고급 이미지 분석
 - 🏢 **조직별 스키마**: 국토교통부/한국도로공사 전용 분석 스키마
 - 👁️ **PDF 뷰어 모달**: 별도 창에서 PDF 미리보기 및 페이지 네비게이션
 
 ### DXF 분석 기능 (NEW)
+
 - 🏗️ **DXF 파일 지원**: CAD 도면 파일 (.dxf) 업로드 및 분석
 - 📐 **도곽 정보 추출**: 도면명, 도면번호, 건설분야, 건설단계, 축척 등
 - 🔧 **Block Reference 분석**: 블록 참조 및 속성 정보 완전 추출
@@ -24,6 +26,7 @@ Flet 기반의 PDF 및 DXF 파일 업로드 및 분석 애플리케이션입니�
 - 🎯 **ATTDEF 정보 수집**: 블록 정의에서 프롬프트 정보 자동 매핑
 
 ### 공통 기능
+
 - 📊 **실시간 진행률**: 분석 과정을 실시간으로 확인
 - 🎨 **현대적인 UI**: 좌우 분할 레이아웃 및 Material Design 기반 인터페이스
 - ⚙️ **다양한 분석 모드**: 기본, 상세, 사용자 정의 분석
@@ -60,12 +63,14 @@ pip install -r requirements.txt
 ### 3. 환경 설정
 
 1. `.env.example` 파일을 `.env`로 복사:
+
 ```bash
 copy .env.example .env  # Windows
 cp .env.example .env    # macOS/Linux
 ```
 
 2. `.env` 파일을 편집하여 Gemini API 키 설정:
+
 ```env
 GEMINI_API_KEY=your_actual_gemini_api_key_here
 ```
@@ -97,7 +102,7 @@ ALLOWED_EXTENSIONS=pdf
 UPLOAD_FOLDER=uploads
 
 # Gemini API 설정
-GEMINI_MODEL=gemini-2.5-flash-preview-04-17
+GEMINI_MODEL=gemini-2.5-pro
 DEFAULT_PROMPT=pdf 이미지 분석하여 도면인지 어떤 정보들이 있는지 알려줘.
 ```
 
@@ -114,7 +119,8 @@ DEFAULT_PROMPT=pdf 이미지 분석하여 도면인지 어떤 정보들이 있�
 
 1. **PDF 파일 선택**: "PDF 파일 선택" 버튼을 클릭하여 분석할 PDF 파일을 선택합니다.
 
-2. **분석 설정**: 
+2. **분석 설정**:
+
    - **페이지 선택**: 첫 번째 페이지만 또는 모든 페이지 분석 선택
    - **분석 모드**: 기본, 상세, 사용자 정의 중 선택
 
@@ -125,7 +131,7 @@ DEFAULT_PROMPT=pdf 이미지 분석하여 도면인지 어떤 정보들이 있�
 ### 분석 모드
 
 - **기본 분석**: 문서 유형 및 기본 정보 분석
-- **상세 분석**: 도면, 도표, 텍스트 등 상세 정보 분석  
+- **상세 분석**: 도면, 도표, 텍스트 등 상세 정보 분석
 - **사용자 정의**: 원하는 분석 내용을 직접 입력
 
 ## 🏗️ 프로젝트 구조
@@ -165,21 +171,25 @@ pytest
 ### 모듈 설명
 
 #### `pdf_processor.py`
+
 - PDF 파일 검증 및 정보 추출
 - PDF 페이지를 이미지로 변환
 - Base64 인코딩 처리
 
 #### `gemini_analyzer.py`
+
 - Gemini API 클라이언트 관리
 - 이미지 분석 요청 및 응답 처리
 - 스트리밍 분석 지원
 
 #### `ui_components.py`
+
 - Flet UI 컴포넌트 정의
 - 재사용 가능한 UI 요소들
 - Material Design 스타일 적용
 
 #### `main.py`
+
 - 메인 애플리케이션 로직
 - 이벤트 처리 및 UI 통합
 - 백그라운드 작업 관리
@@ -189,18 +199,21 @@ pytest
 ### 일반적인 문제들
 
 **1. API 키 오류**
+
 ```
 오류: Gemini API 키가 설정되지 않았습니다.
 해결: .env 파일에 올바른 GEMINI_API_KEY를 설정하세요.
 ```
 
 **2. PDF 파일 오류**
+
 ```
 오류: 유효하지 않은 PDF 파일입니다.
 해결: 손상되지 않은 PDF 파일을 사용하거나 다른 PDF로 시도하세요.
 ```
 
 **3. 의존성 설치 오류**
+
 ```bash
 # PyMuPDF 설치 문제가 있을 경우
 pip install --upgrade pip
@@ -208,8 +221,9 @@ pip install PyMuPDF --no-cache-dir
 ```
 
 **4. 메모리 부족 오류**
+
 ```
-해결: 큰 PDF 파일의 경우 첫 번째 페이지만 분석하거나 
+해결: 큰 PDF 파일의 경우 첫 번째 페이지만 분석하거나
       zoom 값을 낮춰서 이미지 크기를 줄이세요.
 ```
 
@@ -246,6 +260,7 @@ python main.py 2>&1 | tee app.log
 ---
 
 **🔗 관련 링크**
+
 - [Flet 문서](https://flet.dev/docs/)
 - [Gemini API 문서](https://ai.google.dev/gemini-api/docs)
 - [PyMuPDF 문서](https://pymupdf.readthedocs.io/)

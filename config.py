@@ -20,7 +20,7 @@ class Config:
     
     # API 설정
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-    GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash-preview-04-17")
+    GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-pro")
     DEFAULT_PROMPT = os.getenv(
         "DEFAULT_PROMPT", 
         "pdf 이미지 분석하여 도면인지 어떤 정보들이 있는지 알려줘.structured_output 이외에 정보도 기타에 넣어줘."
@@ -57,6 +57,11 @@ class Config:
     def get_file_size_limit_bytes(cls):
         """파일 크기 제한을 바이트로 반환"""
         return cls.MAX_FILE_SIZE_MB * 1024 * 1024
+    
+    @classmethod
+    def get_gemini_api_key(cls):
+        """Gemini API 키 반환"""
+        return cls.GEMINI_API_KEY
 
 # 설정 검증
 if __name__ == "__main__":

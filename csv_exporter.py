@@ -249,5 +249,58 @@ def main():
         print("\nCSV 저장 실패")
 
 
-if __name__ == "__main__":
-    main()
+    if __name__ == "__main__":
+        main()
+
+import json
+
+def export_analysis_results_to_csv(data: List[Dict[str, Any]], file_path: str):
+    """
+    분석 결과를 CSV 파일로 저장합니다. pdf_analysis_result 컬럼의 JSON 데이터를 평탄화합니다.
+    Args:
+        data: 분석 결과 딕셔너리 리스트
+        file_path: 저장할 CSV 파일 경로
+    """
+    if not data:
+        logger.warning("내보낼 데이터가 없습니다.")
+        return
+
+    all_keys = set()
+    processed_data = []
+
+    for row in data:
+        new_row = row.copy()
+        if 'pdf_analysis_result' in new_row and new_row['pdf_analysis_result']:
+            try:
+                json_data = new_row['pdf_analysis_result']
+                if isinstance(json_data, str):
+                    json_data = json.loads(json_data)
+
+                if isinstance(json_data, dict):
+                    for k, v in json_data.items():
+                        new_row[f"pdf_analysis_result_{k}"] = v
+                    del new_row['pdf_analysis_result']
+                else:
+                    new_row['pdf_analysis_result'] = str(json_data)
+            except (json.JSONDecodeError, TypeError) as e:
+                logger.warning(f"pdf_analysis_result 파싱 오류: {e}, 원본 데이터 유지: {new_row['pdf_analysis_result']}")
+                new_row['pdf_analysis_result'] = str(new_row['pdf_analysis_result'])
+        
+        processed_data.append(new_row)
+        all_keys.update(new_row.keys())
+
+    # 'pdf_analysis_result'가 평탄화된 경우 최종 키에서 제거
+    if 'pdf_analysis_result' in all_keys:
+        all_keys.remove('pdf_analysis_result')
+
+    sorted_keys = sorted(list(all_keys))
+
+    try:
+        with open(file_path, 'w', newline='', encoding='utf-8-sig') as output_file:
+            dict_writer = csv.DictWriter(output_file, sorted_keys)
+            dict_writer.writeheader()
+            dict_writer.writerows(processed_data)
+        logger.info(f"분석 결과 CSV 저장 완료: {file_path}")
+    except Exception as e:
+        logger.error(f"분석 결과 CSV 저장 중 오류: {e}")
+

@@ -25,6 +25,9 @@ python-dotenv>=1.0.0
 # 추가 유틸리티
 requests>=2.31.0
 
+# 데이터 처리 (NEW - 다중 파일 CSV 출력용)
+pandas>=2.0.0
+
 # Flet Material Design (선택 사항)
 flet-material>=0.3.3
 

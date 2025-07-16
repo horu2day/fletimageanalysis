@@ -105,7 +105,7 @@ class GeminiAnalyzer:
 
     def _get_schema(self, organization_type: str) -> types.Schema:
         """조직 유형에 따른 스키마를 반환합니다."""
-        return SCHEMA_EXPRESSWAY if organization_type == "expressway" else SCHEMA_TRANSPORTATION
+        return SCHEMA_EXPRESSWAY if organization_type == "한국도로공사" else SCHEMA_TRANSPORTATION
 
     def analyze_pdf_page(
         self,
@@ -157,7 +157,7 @@ class GeminiAnalyzer:
                 )
             ]
 
-            selected_schema = self._get_schema(organization_type);
+            selected_schema = self._get_schema(organization_type)
 
             generate_content_config = types.GenerateContentConfig(
                 temperature=0,

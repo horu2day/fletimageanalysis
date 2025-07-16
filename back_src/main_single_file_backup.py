@@ -1,13 +1,9 @@
 """
-PDF/DXF 도면 분석기 - 통합 애플리케이션 (탭 기반 인터페이스)
-단일 파일 처리와 다중 파일 배치 처리를 탭으로 분리
-
-Tab 1: 단일 파일 분석 (기존 기능)
-Tab 2: 다중 파일 배치 처리 (새로운 기능)
-
-Author: Claude Assistant
-Updated: 2025-07-14
-Version: 2.0.0
+PDF/DXF 도면 분석기 - 메인 애플리케이션 (업데이트된 좌우 분할 레이아웃)
+Flet 기반의 PDF/DXF 업로드 및 분석 애플리케이션
+- PDF: Gemini API 이미지 분석
+- DXF: ezdxf 라이브러리를 통한 도곽 정보 추출
+새로운 UI: 좌측 설정/분석, 우측 결과, PDF 뷰어 모달
 """
 
 import flet as ft
@@ -20,13 +16,12 @@ import time
 # 프로젝트 모듈 임포트
 from config import Config
 from pdf_processor import PDFProcessor
-from dxf_processor_fixed import FixedDXFProcessor as DXFProcessor
-from comprehensive_text_extractor import ComprehensiveTextExtractor
+from dxf_processor_fixed import FixedDXFProcessor as DXFProcessor  # NEW - 수정된 DXF 처리기
+from comprehensive_text_extractor import ComprehensiveTextExtractor  # NEW - 포괄적 텍스트 추출기
 from gemini_analyzer import GeminiAnalyzer
 from ui_components import UIComponents
 from utils import AnalysisResultSaver, DateTimeUtils
-from csv_exporter import TitleBlockCSVExporter
-from multi_file_main import MultiFileApp
+from csv_exporter import TitleBlockCSVExporter  # NEW - CSV 저장 기능
 
 # 로깅 설정
 logging.basicConfig(
@@ -35,22 +30,21 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-
-class SingleFileAnalyzerApp:
-    """단일 파일 분석기 애플리케이션 클래스 (기존 기능)"""
+class DocumentAnalyzerApp:
+    """PDF/DXF 분석기 메인 애플리케이션 클래스 - 새로운 좌우 분할 레이아웃"""
     
     def __init__(self, page: ft.Page):
         self.page = page
         self.pdf_processor = PDFProcessor()
-        self.dxf_processor = DXFProcessor()
-        self.text_extractor = ComprehensiveTextExtractor()
-        self.csv_exporter = TitleBlockCSVExporter()
+        self.dxf_processor = DXFProcessor()  # NEW - DXF 처리기
+        self.text_extractor = ComprehensiveTextExtractor()  # NEW - 포괄적 텍스트 추출기
+        self.csv_exporter = TitleBlockCSVExporter()  # NEW - CSV 저장기
         self.gemini_analyzer = None
-        self.current_file_path = None
-        self.current_file_type = None
-        self.current_pdf_info = None
-        self.current_title_block_info = None
-        self.current_text_extraction_result = None
+        self.current_file_path = None  # PDF/DXF 파일 경로
+        self.current_file_type = None  # 파일 타입 (pdf 또는 dxf)
+        self.current_pdf_info = None  # PDF 전용
+        self.current_title_block_info = None  # DXF 타이틀블럭 정보
+        self.current_text_extraction_result = None  # NEW - 포괄적 텍스트 추출 결과
         self.analysis_results = {}
         self.result_saver = AnalysisResultSaver("results")
         self.analysis_start_time = None
@@ -67,9 +61,9 @@ class SingleFileAnalyzerApp:
         self.results_container = None
         self.save_text_button = None
         self.save_json_button = None
-        self.save_csv_button = None
-        self.title_block_table = None
-        self.comprehensive_text_display = None
+        self.save_csv_button = None  # NEW - CSV 저장 버튼
+        self.title_block_table = None  # NEW - 타이틀블럭 속성 테이블
+        self.comprehensive_text_display = None  # NEW - 포괄적 텍스트 표시 컴포넌트
         self.organization_selector = None
         self.page_selector = None
         self.analysis_mode = None
@@ -78,14 +72,33 @@ class SingleFileAnalyzerApp:
         self.pdf_preview_button = None
         
         # 초기화
+        self.setup_page()
         self.init_gemini_analyzer()
         
+    def setup_page(self):
+        """페이지 기본 설정"""
+        self.page.title = Config.APP_TITLE
+        self.page.theme_mode = ft.ThemeMode.LIGHT
+        self.page.padding = 0
+        self.page.bgcolor = ft.Colors.GREY_100
+        
+        # 윈도우 크기 설정 - 버튼이 모두 보이게 세로 길게, 가로는 10% 줄임
+        self.page.window.width = 980  # 1400 * 0.9 = 1260
+        self.page.window.height = 980  # 1000 -> 1080으로 증가
+        self.page.window.min_width = 1080  # 1200 * 0.9 = 1080
+        self.page.window.min_height = 780
+        
+        logger.info("페이지 설정 완료 - 새로운 좌우 분할 레이아웃")
+    
     def init_gemini_analyzer(self):
         """Gemini 분석기 초기화"""
         try:
             config_errors = Config.validate_config()
             if config_errors:
-                logger.error(f"설정 오류: {config_errors}")
+                self.show_error_dialog(
+                    "설정 오류", 
+                    "\\n".join(config_errors) + "\\n\\n.env 파일을 확인하세요."
+                )
                 return
                 
             self.gemini_analyzer = GeminiAnalyzer()
@@ -93,9 +106,17 @@ class SingleFileAnalyzerApp:
             
         except Exception as e:
             logger.error(f"Gemini 분석기 초기화 실패: {e}")
+            self.show_error_dialog(
+                "초기화 오류",
+                f"Gemini API 초기화에 실패했습니다:\\n{str(e)}"
+            )
     
-    def build_ui(self) -> ft.Column:
-        """단일 파일 분석 UI 구성 (기존 좌우 분할 레이아웃)"""
+    def build_ui(self):
+        """새로운 좌우 분할 UI 구성"""
+        
+        # 앱바
+        app_bar = UIComponents.create_app_bar()
+        self.page.appbar = app_bar
         
         # 좌측 컨트롤 패널 (4/12 columns)
         left_panel = self.create_left_control_panel()
@@ -117,12 +138,22 @@ class SingleFileAnalyzerApp:
             ),
         ])
         
+        # 메인 컨테이너
+        main_container = ft.Container(
+            content=ft.Column([
+                main_layout,
+            ], expand=True, scroll=ft.ScrollMode.AUTO),
+            expand=True,
+            margin=10,
+        )
+        
+        # 페이지에 추가
+        self.page.add(main_container)
+        
         # PDF 뷰어 다이얼로그 초기화
         self.init_pdf_viewer_dialog()
         
-        return ft.Column([
-            main_layout
-        ], expand=True, scroll=ft.ScrollMode.AUTO)
+        logger.info("새로운 좌우 분할 UI 구성 완료")
     
     def create_left_control_panel(self) -> ft.Column:
         """좌측 컨트롤 패널 생성"""
@@ -190,7 +221,7 @@ class SingleFileAnalyzerApp:
         
         # 결과 텍스트
         self.results_text = ft.Text(
-            "분석 결과가 여기에 표시됩니다.\n\n좌측에서 PDF/DXF 파일을 선택하고 분석을 시작하세요.",
+            "분석 결과가 여기에 표시됩니다.\\n\\n좌측에서 PDF 파일을 선택하고 분석을 시작하세요.",
             size=14,
             selectable=True,
         )
@@ -230,12 +261,12 @@ class SingleFileAnalyzerApp:
             )
         )
         
-        # CSV 저장 버튼 (DXF 전용)
+        # NEW - CSV 저장 버튼 (DXF 전용)
         self.save_csv_button = ft.ElevatedButton(
             text="📊 CSV 저장",
             icon=ft.Icons.TABLE_CHART,
             disabled=True,
-            visible=False,
+            visible=False,  # 기본적으로 숨김, DXF 분석 시에만 표시
             on_click=self.on_save_csv_click,
             style=ft.ButtonStyle(
                 bgcolor=ft.Colors.ORANGE_100,
@@ -254,7 +285,7 @@ class SingleFileAnalyzerApp:
             ft.Row([
                 self.save_text_button,
                 self.save_json_button,
-                self.save_csv_button,
+                self.save_csv_button,  # NEW - CSV 저장 버튼 추가
             ]),
         ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN)
         
@@ -495,8 +526,7 @@ class SingleFileAnalyzerApp:
             actions_alignment=ft.MainAxisAlignment.END,
         )
     
-    # 기존 이벤트 핸들러들 (기존 main.py에서 복사)
-    # ... (이벤트 핸들러 코드들을 여기에 복사)
+    # 이벤트 핸들러들
     
     def on_select_file_click(self, e):
         """파일 선택 버튼 클릭 핸들러"""
@@ -506,11 +536,12 @@ class SingleFileAnalyzerApp:
         )
     
     def on_file_selected(self, e: ft.FilePickerResultEvent):
-        """파일 선택 결과 핸들러"""
+        """파일 선택 결과 핸들러 - PDF/DXF 지원"""
         if e.files:
             file = e.files[0]
             self.current_file_path = file.path
             
+            # 파일 확장자로 타입 결정
             file_extension = file.path.lower().split('.')[-1]
             
             if file_extension == 'pdf':
@@ -537,7 +568,10 @@ class SingleFileAnalyzerApp:
     def _handle_pdf_file_selection(self, file):
         """PDF 파일 선택 처리"""
         if self.pdf_processor.validate_pdf_file(self.current_file_path):
+            # PDF 정보 조회
             self.current_pdf_info = self.pdf_processor.get_pdf_info(self.current_file_path)
+            
+            # 파일 크기 정보 추가
             file_size_mb = self.current_pdf_info['file_size'] / (1024 * 1024)
             file_info = f"✅ {file.name} (PDF)\n📄 {self.current_pdf_info['page_count']}페이지, {file_size_mb:.1f}MB"
             self.selected_file_text.value = file_info
@@ -545,6 +579,7 @@ class SingleFileAnalyzerApp:
             self.upload_button.disabled = False
             self.pdf_preview_button.disabled = False
             
+            # 페이지 정보 업데이트
             self.page_info_text.value = f"1 / {self.current_pdf_info['page_count']}"
             self.current_page_index = 0
             
@@ -560,6 +595,7 @@ class SingleFileAnalyzerApp:
         """DXF 파일 선택 처리"""
         try:
             if self.dxf_processor.validate_dxf_file(self.current_file_path):
+                # DXF 파일 크기 계산
                 import os
                 file_size_mb = os.path.getsize(self.current_file_path) / (1024 * 1024)
                 
@@ -567,11 +603,12 @@ class SingleFileAnalyzerApp:
                 self.selected_file_text.value = file_info
                 self.selected_file_text.color = ft.Colors.GREEN_600
                 self.upload_button.disabled = False
-                self.pdf_preview_button.disabled = True
+                self.pdf_preview_button.disabled = True  # DXF는 미리보기 비활성화
                 
+                # DXF는 페이지 개념이 없으므로 기본값 설정
                 self.page_info_text.value = "DXF 파일"
                 self.current_page_index = 0
-                self.current_pdf_info = None
+                self.current_pdf_info = None  # DXF는 PDF 정보 없음
                 
                 logger.info(f"DXF 파일 선택됨: {file.name}")
             else:
@@ -593,7 +630,7 @@ class SingleFileAnalyzerApp:
         self.current_file_path = None
         self.current_file_type = None
         self.current_pdf_info = None
-        self.current_title_block_info = None
+        self.current_title_block_info = None  # NEW - 타이틀블럭 정보 초기화
     
     def on_analysis_mode_change(self, e):
         """분석 모드 변경 핸들러"""
@@ -620,14 +657,17 @@ class SingleFileAnalyzerApp:
     def load_pdf_preview(self):
         """PDF 미리보기 로드"""
         try:
+            # PDF 페이지를 이미지로 변환
             image_data = self.pdf_processor.pdf_page_to_image_bytes(
                 self.current_file_path, 
                 self.current_page_index
             )
             
             if image_data:
+                # base64로 인코딩
                 base64_data = base64.b64encode(image_data).decode()
                 
+                # 이미지 표시
                 self.pdf_image_container.content = ft.Image(
                     src_base64=base64_data,
                     width=600,
@@ -635,6 +675,7 @@ class SingleFileAnalyzerApp:
                     fit=ft.ImageFit.CONTAIN,
                 )
                 
+                # 네비게이션 버튼 상태 업데이트
                 self.prev_page_button.disabled = self.current_page_index == 0
                 self.next_page_button.disabled = self.current_page_index >= self.current_pdf_info['page_count'] - 1
                 self.page_info_text.value = f"{self.current_page_index + 1} / {self.current_pdf_info['page_count']}"
@@ -674,9 +715,11 @@ class SingleFileAnalyzerApp:
         if not self.current_file_path or not self.current_file_type:
             return
             
+        # PDF 분석의 경우 Gemini 분석기가 필요
         if self.current_file_type == 'pdf' and not self.gemini_analyzer:
             return
             
+        # 분석을 별도 스레드에서 실행
         threading.Thread(target=self.run_analysis, daemon=True).start()
     
     def on_save_text_click(self, e):
@@ -688,12 +731,13 @@ class SingleFileAnalyzerApp:
         self._save_results("json")
     
     def on_save_csv_click(self, e):
-        """CSV 저장 버튼 클릭 핸들러"""
+        """CSV 저장 버튼 클릭 핸들러 (DXF 타이틀블럭 속성 전용)"""
         if not self.current_title_block_info:
             self.show_error_dialog("저장 오류", "저장할 타이틀블럭 속성 정보가 없습니다.")
             return
             
         try:
+            # CSV 파일 저장
             import os
             filename = f"title_block_attributes_{os.path.basename(self.current_file_path).replace('.dxf', '')}"
             saved_path = self.csv_exporter.export_title_block_attributes(
@@ -704,22 +748,23 @@ class SingleFileAnalyzerApp:
             if saved_path:
                 self.show_info_dialog(
                     "CSV 저장 완료", 
-                    f"타이틀블럭 속성 정보가 CSV 파일로 저장되었습니다:\n\n{saved_path}"
+                    f"타이틀블럭 속성 정보가 CSV 파일로 저장되었습니다:\\n\\n{saved_path}"
                 )
             else:
                 self.show_error_dialog("저장 실패", "CSV 파일 저장 중 오류가 발생했습니다.")
                 
         except Exception as e:
             logger.error(f"CSV 저장 중 오류: {e}")
-            self.show_error_dialog("저장 오류", f"CSV 저장 중 오류가 발생했습니다:\n{str(e)}")
+            self.show_error_dialog("저장 오류", f"CSV 저장 중 오류가 발생했습니다:\\n{str(e)}")
     
     def _save_results(self, format_type: str):
         """결과 저장 공통 함수"""
-        if not self.analysis_results:
+        if not self.analysis_results or not self.current_pdf_info:
             self.show_error_dialog("저장 오류", "저장할 분석 결과가 없습니다.")
             return
             
         try:
+            # 분석 설정 정보 수집
             analysis_settings = {
                 "조직_유형": self.organization_selector.value,
                 "페이지_선택": self.page_selector.value,
@@ -730,7 +775,7 @@ class SingleFileAnalyzerApp:
             
             if format_type == "text":
                 saved_path = self.result_saver.save_analysis_results(
-                    pdf_filename=self.current_pdf_info['filename'] if self.current_pdf_info else "dxf_file",
+                    pdf_filename=self.current_pdf_info['filename'],
                     analysis_results=self.analysis_results,
                     pdf_info=self.current_pdf_info,
                     analysis_settings=analysis_settings
@@ -739,14 +784,14 @@ class SingleFileAnalyzerApp:
                 if saved_path:
                     self.show_info_dialog(
                         "저장 완료", 
-                        f"분석 결과가 텍스트 파일로 저장되었습니다:\n\n{saved_path}"
+                        f"분석 결과가 텍스트 파일로 저장되었습니다:\\n\\n{saved_path}"
                     )
                 else:
                     self.show_error_dialog("저장 실패", "텍스트 파일 저장 중 오류가 발생했습니다.")
                     
             elif format_type == "json":
                 saved_path = self.result_saver.save_analysis_json(
-                    pdf_filename=self.current_pdf_info['filename'] if self.current_pdf_info else "dxf_file",
+                    pdf_filename=self.current_pdf_info['filename'],
                     analysis_results=self.analysis_results,
                     pdf_info=self.current_pdf_info,
                     analysis_settings=analysis_settings
@@ -755,17 +800,17 @@ class SingleFileAnalyzerApp:
                 if saved_path:
                     self.show_info_dialog(
                         "저장 완료", 
-                        f"분석 결과가 JSON 파일로 저장되었습니다:\n\n{saved_path}"
+                        f"분석 결과가 JSON 파일로 저장되었습니다:\\n\\n{saved_path}"
                     )
                 else:
                     self.show_error_dialog("저장 실패", "JSON 파일 저장 중 오류가 발생했습니다.")
                 
         except Exception as e:
             logger.error(f"결과 저장 중 오류: {e}")
-            self.show_error_dialog("저장 오류", f"결과 저장 중 오류가 발생했습니다:\n{str(e)}")
+            self.show_error_dialog("저장 오류", f"결과 저장 중 오류가 발생했습니다:\\n{str(e)}")
     
     def run_analysis(self):
-        """분석 실행 (백그라운드 스레드)"""
+        """분석 실행 (백그라운드 스레드) - PDF/DXF 지원"""
         try:
             self.analysis_start_time = time.time()
             
@@ -782,7 +827,7 @@ class SingleFileAnalyzerApp:
             self.show_error_dialog("분석 오류", f"분석 중 오류가 발생했습니다:\n{str(e)}")
     
     def _run_pdf_analysis(self):
-        """PDF 파일 분석 실행"""
+        """PDF 파일 분석 실행 (좌표 추출 기능 통합)"""
         self.update_progress_ui(True, "PDF 분석 준비 중...")
         
         organization_type = "expressway" if self.organization_selector.value == "한국도로공사" else "transportation"
@@ -802,18 +847,18 @@ class SingleFileAnalyzerApp:
             progress = (i + 1) / total_pages
             self.update_progress_ui(True, f"페이지 {page_num + 1}/{total_pages} 처리 중...", progress)
 
-            # 텍스트와 좌표 추출
+            # 1. 텍스트와 좌표 추출
             self.update_progress_ui(True, f"페이지 {page_num + 1}: 텍스트 추출 중...", progress)
             text_blocks = self.pdf_processor.extract_text_with_coordinates(self.current_file_path, page_num)
             if not text_blocks:
                 logger.warning(f"페이지 {page_num + 1}에서 텍스트를 추출하지 못했습니다.")
 
-            # 이미지를 Base64로 변환
+            # 2. 이미지를 Base64로 변환
             self.update_progress_ui(True, f"페이지 {page_num + 1}: 이미지 변환 중...", progress)
             base64_data = self.pdf_processor.pdf_page_to_base64(self.current_file_path, page_num)
             
             if base64_data:
-                # Gemini API로 분석
+                # 3. Gemini API로 분석 (이미지 + 텍스트 좌표)
                 self.update_progress_ui(True, f"페이지 {page_num + 1}: AI 분석 중...", progress)
                 result = self.gemini_analyzer.analyze_pdf_page(
                     base64_data=base64_data,
@@ -835,12 +880,17 @@ class SingleFileAnalyzerApp:
         self.update_progress_ui(True, "DXF 파일 분석 중...")
         
         try:
+            # DXF 파일 처리
             result = self.dxf_processor.process_dxf_file_comprehensive(self.current_file_path)
             
             if result['success']:
+                # 분석 결과 포맷팅
                 self.analysis_results = {'dxf': result}
+                
+                # 결과 표시
                 self.display_dxf_analysis_results(result)
                 
+                # 완료 상태로 업데이트
                 if self.analysis_start_time:
                     duration = time.time() - self.analysis_start_time
                     duration_str = DateTimeUtils.format_duration(duration)
@@ -857,7 +907,12 @@ class SingleFileAnalyzerApp:
             self.update_progress_ui(False, f"❌ DXF 분석 오류: {str(e)}")
             self.show_error_dialog("DXF 분석 오류", f"DXF 분석 중 오류가 발생했습니다:\n{str(e)}")
     
-    def update_progress_ui(self, is_running: bool, status: str, progress: Optional[float] = None):
+    def update_progress_ui(
+        self, 
+        is_running: bool, 
+        status: str, 
+        progress: Optional[float] = None
+    ):
         """진행률 UI 업데이트"""
         def update():
             self.progress_ring.visible = is_running
@@ -871,10 +926,11 @@ class SingleFileAnalyzerApp:
                 
             self.page.update()
         
+        # 메인 스레드에서 UI 업데이트
         self.page.run_thread(update)
     
     def display_analysis_results(self):
-        """분석 결과 표시"""
+        """분석 결과 표시 (좌표 포함)"""
         def update_results():
             if not self.analysis_results:
                 self.results_text.value = "❌ 분석 결과가 없습니다."
@@ -895,6 +951,7 @@ class SingleFileAnalyzerApp:
                 result_text += "-" * 40 + "\n"
                 
                 try:
+                    # 결과가 JSON 문자열이므로 파싱
                     data = json.loads(result_json)
                     for key, item in data.items():
                         if isinstance(item, dict) and 'value' in item:
@@ -903,8 +960,10 @@ class SingleFileAnalyzerApp:
                             y = item.get('y', -1)
                             result_text += f"- {key}: {val} (좌표: {x:.0f}, {y:.0f})\n"
                         else:
+                            # 단순 값일 경우 (이전 버전 호환)
                             result_text += f"- {key}: {item}\n"
                 except (json.JSONDecodeError, TypeError):
+                    # JSON 파싱 실패 시 원본 텍스트 표시
                     result_text += str(result_json)
 
                 result_text += "\n" + "=" * 60 + "\n\n"
@@ -918,17 +977,20 @@ class SingleFileAnalyzerApp:
         self.page.run_thread(update_results)
     
     def display_dxf_analysis_results(self, dxf_result):
-        """DXF 분석 결과 표시"""
+        """DXF 분석 결과 표시 - 타이틀블럭 속성 테이블 포함"""
         def update_results():
             if dxf_result and dxf_result['success']:
+                # 타이틀블럭 정보 저장
                 self.current_title_block_info = dxf_result.get('title_block')
                 
+                # 결과 텍스트 구성
                 import os
                 result_text = "🎯 DXF 분석 요약\n"
                 result_text += f"📊 파일: {os.path.basename(dxf_result['file_path'])}\n"
                 result_text += f"⏰ 완료 시간: {DateTimeUtils.get_timestamp()}\n"
                 result_text += "=" * 60 + "\n\n"
                 
+                # 요약 정보
                 summary = dxf_result.get('summary', {})
                 result_text += "📋 분석 요약\n"
                 result_text += "-" * 40 + "\n"
@@ -941,7 +1003,7 @@ class SingleFileAnalyzerApp:
                 
                 result_text += "\n"
                 
-                # 도곽 정보 표시 (기존 코드 유지)
+                # 도곽 정보
                 title_block = dxf_result.get('title_block')
                 if title_block:
                     result_text += "🏗️ 도곽 정보\n"
@@ -965,6 +1027,7 @@ class SingleFileAnalyzerApp:
                         if value:
                             result_text += f"{label}: {value}\n"
                     
+                    # 바운딩 박스 정보
                     bbox = title_block.get('bounding_box')
                     if bbox:
                         result_text += "\n📐 도곽 위치 정보\n"
@@ -972,16 +1035,20 @@ class SingleFileAnalyzerApp:
                         result_text += f"우상단: ({bbox['max_x']:.2f}, {bbox['max_y']:.2f})\n"
                         result_text += f"크기: {bbox['max_x'] - bbox['min_x']:.2f} × {bbox['max_y'] - bbox['min_y']:.2f}\n"
                     
+                    # 타이틀블럭 속성 테이블 생성
                     if title_block.get('all_attributes'):
                         result_text += "\n\n📊 타이틀블럭 속성 상세 정보\n"
                         result_text += "-" * 60 + "\n"
                         
+                        # 테이블 데이터 생성
                         table_data = self.csv_exporter.create_attribute_table_data(title_block)
                         
                         if table_data:
+                            # 테이블 헤더
                             result_text += f"{'No.':<4} {'Tag':<15} {'Text':<25} {'Prompt':<20} {'X':<8} {'Y':<8} {'Layer':<8}\n"
                             result_text += "-" * 100 + "\n"
                             
+                            # 테이블 데이터 (최대 10개만 표시)
                             for i, row in enumerate(table_data[:10]):
                                 result_text += f"{row['No.']:<4} {row['Tag'][:14]:<15} {row['Text'][:24]:<25} "
                                 result_text += f"{row['Prompt'][:19]:<20} {row['X']:<8} {row['Y']:<8} {row['Layer'][:7]:<8}\n"
@@ -991,12 +1058,13 @@ class SingleFileAnalyzerApp:
                             
                             result_text += f"\n💡 전체 {len(table_data)}개 속성을 CSV 파일로 저장할 수 있습니다.\n"
                 
+                # 블록 참조 정보
                 block_refs = dxf_result.get('block_references', [])
                 if block_refs:
                     result_text += f"\n📦 블록 참조 목록 ({len(block_refs)}개)\n"
                     result_text += "-" * 40 + "\n"
                     
-                    for i, block_ref in enumerate(block_refs[:10]):
+                    for i, block_ref in enumerate(block_refs[:10]):  # 최대 10개까지만 표시
                         result_text += f"{i+1}. {block_ref.get('name', 'Unknown')}"
                         if block_ref.get('attributes'):
                             result_text += f" (속성 {len(block_ref['attributes'])}개)"
@@ -1007,9 +1075,11 @@ class SingleFileAnalyzerApp:
                 
                 self.results_text.value = result_text.strip()
                 
+                # 저장 버튼 활성화
                 self.save_text_button.disabled = False
                 self.save_json_button.disabled = False
                 
+                # CSV 저장 버튼 표시 및 활성화 (타이틀블럭이 있는 경우)
                 if self.current_title_block_info and self.current_title_block_info.get('all_attributes'):
                     self.save_csv_button.visible = True
                     self.save_csv_button.disabled = False
@@ -1027,6 +1097,7 @@ class SingleFileAnalyzerApp:
                 
             self.page.update()
         
+        # 메인 스레드에서 UI 업데이트
         self.page.run_thread(update_results)
     
     def show_error_dialog(self, title: str, message: str):
@@ -1055,125 +1126,16 @@ class SingleFileAnalyzerApp:
         dialog.open = True
         self.page.update()
 
-
-class TabbedDocumentAnalyzerApp:
-    """탭 기반 통합 문서 분석기 애플리케이션"""
-    
-    def __init__(self, page: ft.Page):
-        self.page = page
-        self.setup_page()
-        
-        # 앱 인스턴스
-        self.single_file_app = None
-        self.multi_file_app = None
-    
-    def setup_page(self):
-        """페이지 기본 설정"""
-        self.page.title = "PDF/DXF 도면 분석기 v2.0"
-        self.page.theme_mode = ft.ThemeMode.LIGHT
-        self.page.padding = 0
-        self.page.bgcolor = ft.Colors.GREY_100
-        
-        # 윈도우 크기 설정
-        self.page.window.width = 1400
-        self.page.window.height = 1000
-        self.page.window.min_width = 1200
-        self.page.window.min_height = 800
-        
-        logger.info("탭 기반 애플리케이션 페이지 설정 완료")
-    
-    def build_ui(self):
-        """탭 기반 UI 구성"""
-        
-        # 앱바
-        app_bar = ft.AppBar(
-            title=ft.Text(
-                "📄 PDF/DXF 도면 분석기 v2.0",
-                size=20,
-                weight=ft.FontWeight.BOLD
-            ),
-            center_title=True,
-            bgcolor=ft.Colors.BLUE_600,
-            color=ft.Colors.WHITE,
-            automatically_imply_leading=False,
-        )
-        self.page.appbar = app_bar
-        
-        # 탭 생성
-        tabs = ft.Tabs(
-            selected_index=0,
-            animation_duration=300,
-            divider_color=ft.Colors.BLUE_200,
-            indicator_color=ft.Colors.BLUE_600,
-            label_color=ft.Colors.BLUE_800,
-            unselected_label_color=ft.Colors.GREY_600,
-            # overlay_color 제거 - Flet 버전 호환성 개선
-            on_change=self.on_tab_change,
-            expand=True,
-            tabs=[
-                ft.Tab(
-                    icon=ft.Icons.DESCRIPTION,
-                    text="단일 파일 분석",
-                    content=self.create_single_file_tab()
-                ),
-                ft.Tab(
-                    icon=ft.Icons.BATCH_PREDICTION,
-                    text="다중 파일 배치 처리",
-                    content=self.create_multi_file_tab()
-                ),
-            ],
-        )
-        
-        # 메인 컨테이너
-        main_container = ft.Container(
-            content=tabs,
-            expand=True,
-            padding=5,
-        )
-        
-        # 페이지에 추가
-        self.page.add(main_container)
-        
-        logger.info("탭 기반 UI 구성 완료")
-    
-    def create_single_file_tab(self) -> ft.Column:
-        """단일 파일 분석 탭 생성"""
-        
-        # 단일 파일 앱 인스턴스 생성
-        self.single_file_app = SingleFileAnalyzerApp(self.page)
-        
-        return self.single_file_app.build_ui()
-    
-    def create_multi_file_tab(self) -> ft.Column:
-        """다중 파일 배치 처리 탭 생성"""
-        
-        # 다중 파일 앱 인스턴스 생성
-        self.multi_file_app = MultiFileApp(self.page)
-        
-        return self.multi_file_app.build_ui()
-    
-    def on_tab_change(self, e):
-        """탭 변경 이벤트 핸들러"""
-        selected_index = e.control.selected_index
-        
-        if selected_index == 0:
-            logger.info("단일 파일 분석 탭 선택")
-        elif selected_index == 1:
-            logger.info("다중 파일 배치 처리 탭 선택")
-        
-        self.page.update()
-
-
 def main(page: ft.Page):
     """메인 함수"""
     try:
-        # 탭 기반 애플리케이션 초기화
-        app = TabbedDocumentAnalyzerApp(page)
+        # 애플리케이션 초기화
+        app = DocumentAnalyzerApp(page)
         
         # UI 구성
         app.build_ui()
         
-        logger.info("탭 기반 통합 애플리케이션 시작 완료")
+        logger.info("새로운 좌우 분할 레이아웃 애플리케이션 시작 완료")
         
     except Exception as e:
         logger.error(f"애플리케이션 시작 실패: {e}")
@@ -1189,7 +1151,6 @@ def main(page: ft.Page):
                 expand=True,
             )
         )
-
 
 if __name__ == "__main__":
     # 애플리케이션 실행

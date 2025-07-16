@@ -243,6 +243,65 @@ class PDFProcessor:
         except Exception as e:
             logger.error(f"PDF 텍스트 및 좌표 추출 중 오류 발생: {e}")
             return []
+    
+    def convert_to_images(
+        self, 
+        file_path: str, 
+        zoom: float = 2.0,
+        max_pages: int = 10
+    ) -> List[Image.Image]:
+        """PDF의 모든 페이지(또는 지정된 수까지)를 PIL Image 리스트로 변환"""
+        images = []
+        try:
+            doc = fitz.open(file_path)
+            page_count = min(len(doc), max_pages)  # 최대 페이지 수 제한
+            
+            logger.info(f"PDF 변환 시작: {page_count}페이지")
+            
+            for page_num in range(page_count):
+                page = doc.load_page(page_num)
+                
+                # 이미지 변환을 위한 매트릭스 설정
+                mat = fitz.Matrix(zoom, zoom)
+                pix = page.get_pixmap(matrix=mat)
+                
+                # PIL Image로 변환
+                img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+                images.append(img)
+                
+                logger.info(f"페이지 {page_num + 1}/{page_count} 변환 완료: {img.size}")
+            
+            doc.close()
+            logger.info(f"PDF 전체 변환 완료: {len(images)}개 이미지")
+            return images
+            
+        except Exception as e:
+            logger.error(f"PDF 다중 페이지 변환 중 오류 발생: {e}")
+            return []
+    
+    def image_to_bytes(self, image: Image.Image, format: str = 'PNG') -> bytes:
+        """
+        PIL Image를 바이트 데이터로 변환합니다.
+        
+        Args:
+            image: PIL Image 객체
+            format: 이미지 포맷 ('PNG', 'JPEG' 등)
+            
+        Returns:
+            이미지 바이트 데이터
+        """
+        try:
+            buffer = io.BytesIO()
+            image.save(buffer, format=format)
+            image_bytes = buffer.getvalue()
+            buffer.close()
+            
+            logger.info(f"이미지를 {format} 바이트로 변환: {len(image_bytes)} bytes")
+            return image_bytes
+            
+        except Exception as e:
+            logger.error(f"이미지 바이트 변환 중 오류 발생: {e}")
+            return b''
 
 # 사용 예시
 if __name__ == "__main__":
